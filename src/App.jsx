@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 
-const API = "https://data-portal.up.railway.app";
+const API = "";
 
 const fmt = (v) => (v == null || v === "" ? "—" : v);
 
