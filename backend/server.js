@@ -115,46 +115,27 @@ app.get("/api/images/:acc", (req, res) => {
   res.json(rows);
 });
 
-app.post("/api/images/:acc", (req, res) => {
-  // 1. เรียกใช้งาน Multer เพื่อจัดการไฟล์
+app.post("/api/images/:acc", (req, res, next) => {
   upload.single("file")(req, res, (err) => {
     if (err) {
-      console.error("Multer error:", err.message);
+      console.log("Multer error:", err.message, err);
       return res.status(500).json({ error: err.message });
     }
-
-    // 2. ตรวจสอบว่ามีไฟล์ส่งมาจริงไหม
-    if (!req.file) {
-      return res.status(400).json({ error: "No file uploaded" });
-    }
-
+    if (!req.file) return res.status(400).json({ error: "No file" });
     const { acc } = req.params;
-    // ดึง URL จาก Cloudinary (ปกติใช้ req.file.path หรือ req.file.secure_url)
-    const url = req.file.path || req.file.secure_url;
-
-    console.log(`Uploading for account: ${acc}, URL: ${url}`);
-
-    // 3. บันทึกลง Database
-    // แนะนำให้ใส่ Callback ใน db.run เพื่อเช็ค error
-    db.run(
-      "INSERT INTO images (acc, filename, date) VALUES (?, ?, ?)",
-      [acc, url, Date.now()],
-      function (dbErr) {
-        if (dbErr) {
-          console.error("Database error:", dbErr.message);
-          return res.status(500).json({ error: "Failed to save to database" });
-        }
-
-        // 4. บันทึก DB ลงไฟล์ (ถ้าจำเป็น) และตอบกลับ
-        saveDB(); 
-        res.json({ 
-          success: true, 
-          id: this.lastID, // คืนค่า ID ล่าสุดที่ insert เข้าไป
-          filename: url 
-        });
-      }
-    );
+    console.log("Upload file:", JSON.stringify(req.file));
+    const url = req.file.path || req.file.secure_url || req.file.url;
+    db.run("INSERT INTO images (acc, filename, date) VALUES (?, ?, ?)", [acc, url, Date.now()]);
+    saveDB();
+    res.json({ success: true, filename: url });
   });
+  if (!req.file) return res.status(400).json({ error: "No file" });
+  const { acc } = req.params;
+  console.log("Upload file:", JSON.stringify(req.file));
+  const url = req.file.path || req.file.secure_url || req.file.url; // Cloudinary URL
+  db.run("INSERT INTO images (acc, filename, date) VALUES (?, ?, ?)", [acc, url, Date.now()]);
+  saveDB();
+  res.json({ success: true, filename: url });
 });
 
 app.delete("/api/images/:id", async (req, res) => {
