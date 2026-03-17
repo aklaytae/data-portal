@@ -115,10 +115,24 @@ app.get("/api/images/:acc", (req, res) => {
   res.json(rows);
 });
 
-app.post("/api/images/:acc", upload.single("file"), (req, res) => {
+app.post("/api/images/:acc", (req, res, next) => {
+  upload.single("file")(req, res, (err) => {
+    if (err) {
+      console.log("Multer error:", err.message, err);
+      return res.status(500).json({ error: err.message });
+    }
+    if (!req.file) return res.status(400).json({ error: "No file" });
+    const { acc } = req.params;
+    console.log("Upload file:", JSON.stringify(req.file));
+    const url = req.file.path || req.file.secure_url || req.file.url;
+    db.run("INSERT INTO images (acc, filename, date) VALUES (?, ?, ?)", [acc, url, Date.now()]);
+    saveDB();
+    res.json({ success: true, filename: url });
+  });
   if (!req.file) return res.status(400).json({ error: "No file" });
   const { acc } = req.params;
-  const url = req.file.path; // Cloudinary URL
+  console.log("Upload file:", JSON.stringify(req.file));
+  const url = req.file.path || req.file.secure_url || req.file.url; // Cloudinary URL
   db.run("INSERT INTO images (acc, filename, date) VALUES (?, ?, ?)", [acc, url, Date.now()]);
   saveDB();
   res.json({ success: true, filename: url });
