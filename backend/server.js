@@ -4,19 +4,25 @@ const path = require("path");
 const fs = require("fs");
 const initSqlJs = require("sql.js");
 const multer = require("multer");
+const cloudinary = require("cloudinary").v2;
+const { CloudinaryStorage } = require("multer-storage-cloudinary");
 
-// สร้างโฟลเดอร์เก็บรูป
-const uploadDir = path.join(__dirname, "uploads");
-if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir);
-
-// ตั้งค่า multer
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, uploadDir),
-  filename: (req, file, cb) => cb(null, `${Date.now()}_${file.originalname}`),
+// ตั้งค่า Cloudinary
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
 });
-const upload = multer({ storage, limits: { fileSize: 10 * 1024 * 1024 } });
+
+// ตั้งค่า multer ใช้ Cloudinary
+const cloudStorage = new CloudinaryStorage({
+  cloudinary,
+  params: { folder: "data-portal", allowed_formats: ["jpg","jpeg","png","gif","webp"] },
+});
+const upload = multer({ storage: cloudStorage, limits: { fileSize: 10 * 1024 * 1024 } });
+
 const app = express();
-const PORT = 3002;
+const PORT = process.env.PORT || 3002;
 const DB_PATH = path.join(__dirname, "gallery.db");
 
 app.use(cors());
@@ -37,7 +43,8 @@ async function initDB() {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       acc TEXT, no INTEGER, channee REAL, mkank INTEGER, name TEXT,
       c1 TEXT, c2 TEXT, c3 TEXT, c4 INTEGER,
-      call TEXT, type TEXT, mkt_code TEXT, company TEXT, branch TEXT
+      call TEXT, type TEXT, mkt_code TEXT, company TEXT, branch TEXT,
+      imported_date INTEGER
     );
     CREATE TABLE IF NOT EXISTS limit_info (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -60,7 +67,6 @@ async function initDB() {
       date      INTEGER NOT NULL
     );
     CREATE INDEX IF NOT EXISTS idx_images_acc ON images(acc);
-  
   `);
   saveDB();
   console.log("✅ Database พร้อมใช้งาน");
@@ -86,6 +92,8 @@ function queryOne(sql, params = []) {
   return queryAll(sql, params)[0] || null;
 }
 
+// ======= API Routes =======
+
 app.get("/api/stats", (req, res) => {
   res.json({
     billCount:  queryOne("SELECT COUNT(*) as cnt FROM bill").cnt,
@@ -94,6 +102,39 @@ app.get("/api/stats", (req, res) => {
     provinces:  queryOne("SELECT COUNT(DISTINCT province) as cnt FROM dpd").cnt,
     companies:  queryOne("SELECT COUNT(DISTINCT company) as cnt FROM bill").cnt,
   });
+});
+
+app.get("/api/last-import", (req, res) => {
+  const row = queryOne("SELECT MAX(imported_date) as last FROM bill");
+  res.json({ last: row?.last || null });
+});
+
+// Images routes (ต้องอยู่ก่อน /api/bill/:acc)
+app.get("/api/images/:acc", (req, res) => {
+  const rows = queryAll("SELECT * FROM images WHERE acc = ? ORDER BY date DESC", [req.params.acc]);
+  res.json(rows);
+});
+
+app.post("/api/images/:acc", upload.single("file"), (req, res) => {
+  if (!req.file) return res.status(400).json({ error: "No file" });
+  const { acc } = req.params;
+  const url = req.file.path; // Cloudinary URL
+  db.run("INSERT INTO images (acc, filename, date) VALUES (?, ?, ?)", [acc, url, Date.now()]);
+  saveDB();
+  res.json({ success: true, filename: url });
+});
+
+app.delete("/api/images/:id", async (req, res) => {
+  const img = queryOne("SELECT * FROM images WHERE id = ?", [req.params.id]);
+  if (!img) return res.status(404).json({ error: "Not found" });
+  // ลบจาก Cloudinary
+  if (img.filename.startsWith("http")) {
+    const publicId = img.filename.split("/").slice(-2).join("/").replace(/\.[^/.]+$/, "");
+    try { await cloudinary.uploader.destroy(publicId); } catch (e) {}
+  }
+  db.run("DELETE FROM images WHERE id = ?", [req.params.id]);
+  saveDB();
+  res.json({ success: true });
 });
 
 app.get("/api/bill", (req, res) => {
@@ -109,38 +150,6 @@ app.get("/api/bill", (req, res) => {
     total = queryOne("SELECT COUNT(*) as cnt FROM bill").cnt;
   }
   res.json({ rows, total, page: +page, pages: Math.ceil(total / limit) });
-});
-
-// เสิร์ฟไฟล์รูป
-app.use("/uploads", express.static(uploadDir));
-
-// GET รูปของ acc
-app.get("/api/images/:acc", (req, res) => {
-  const rows = queryAll("SELECT * FROM images WHERE acc = ? ORDER BY date DESC", [req.params.acc]);
-  res.json(rows);
-});
-
-// POST อัปโหลดรูป
-app.post("/api/images/:acc", upload.single("file"), (req, res) => {
-  if (!req.file) return res.status(400).json({ error: "No file" });
-  const { acc } = req.params;
-  db.run(
-    "INSERT INTO images (acc, filename, date) VALUES (?, ?, ?)",
-    [acc, req.file.filename, Date.now()]
-  );
-  saveDB();
-  res.json({ success: true, filename: req.file.filename });
-});
-
-// DELETE รูป
-app.delete("/api/images/:id", (req, res) => {
-  const img = queryOne("SELECT * FROM images WHERE id = ?", [req.params.id]);
-  if (!img) return res.status(404).json({ error: "Not found" });
-  const filePath = path.join(uploadDir, img.filename);
-  if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-  db.run("DELETE FROM images WHERE id = ?", [req.params.id]);
-  saveDB();
-  res.json({ success: true });
 });
 
 app.get("/api/bill/:acc", (req, res) => {
@@ -189,8 +198,9 @@ app.post("/api/import", (req, res) => {
   if (!table || !rows) return res.status(400).json({ error: "Invalid" });
   if (table === "bill") {
     db.run("DELETE FROM bill");
-    const stmt = db.prepare("INSERT INTO bill (acc,no,channee,mkank,name,c1,c2,c3,c4,call,type,mkt_code,company,branch) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
-    rows.forEach(r => stmt.run([r.acc,r.no,r.channee,r.mkank,r.name,r.c1,r.c2,r.c3,r.c4,r.call,r.type,r.mkt_code,r.company,r.branch]));
+    const stmt = db.prepare("INSERT INTO bill (acc,no,channee,mkank,name,c1,c2,c3,c4,call,type,mkt_code,company,branch,imported_date) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
+    const now = Date.now();
+    rows.forEach(r => stmt.run([r.acc,r.no,r.channee,r.mkank,r.name,r.c1,r.c2,r.c3,r.c4,r.call,r.type,r.mkt_code,r.company,r.branch,now]));
     stmt.free();
   } else if (table === "limit_info") {
     db.run("DELETE FROM limit_info");
@@ -206,41 +216,8 @@ app.post("/api/import", (req, res) => {
   saveDB();
   res.json({ success: true, count: rows.length });
 });
-// เสิร์ฟไฟล์รูป
-app.use("/uploads", express.static(uploadDir));
 
-// GET รูปของ acc
-app.get("/api/images/:acc", (req, res) => {
-  const rows = queryAll("SELECT * FROM images WHERE acc = ? ORDER BY date DESC", [req.params.acc]);
-  res.json(rows);
-});
-
-// POST อัปโหลดรูป
-app.post("/api/images/:acc", upload.single("file"), (req, res) => {
-  if (!req.file) return res.status(400).json({ error: "No file" });
-  const { acc } = req.params;
-  db.run(
-    "INSERT INTO images (acc, filename, date) VALUES (?, ?, ?)",
-    [acc, req.file.filename, Date.now()]
-  );
-  saveDB();
-  res.json({ success: true, filename: req.file.filename });
-});
-
-// DELETE รูป
-app.delete("/api/images/:id", (req, res) => {
-  const img = queryOne("SELECT * FROM images WHERE id = ?", [req.params.id]);
-  if (!img) return res.status(404).json({ error: "Not found" });
-  const filePath = path.join(uploadDir, img.filename);
-  if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-  db.run("DELETE FROM images WHERE id = ?", [req.params.id]);
-  saveDB();
-  res.json({ success: true });
-});
-app.get("/api/last-import", (req, res) => {
-  const row = queryOne("SELECT MAX(imported_date) as last FROM bill");
-  res.json({ last: row?.last || null });
-});
+// ======= Start Server =======
 initDB().then(() => {
   app.use(express.static(path.join(__dirname, "build")));
   app.get("*", (req, res) => {
