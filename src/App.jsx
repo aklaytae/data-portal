@@ -134,7 +134,7 @@ function ImageCell({ acc }) {
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: 12 }}>
                   {images.map(img => (
                     <div key={img.id} style={{ position: "relative", border: "1px solid #1a1a2e", borderRadius: 2, overflow: "hidden" }}>
-                      <img src={`${API}/uploads/${img.filename}`} alt=""
+                      <img src={img.filename.startsWith("http") ? img.filename : `${API}/uploads/${img.filename}`} alt=""
                         style={{ width: "100%", height: 120, objectFit: "cover", display: "block", cursor: "pointer" }}
                         onClick={() => window.open(`${API}/uploads/${img.filename}`, "_blank")} />
                       <button onClick={() => handleDelete(img.id)}
