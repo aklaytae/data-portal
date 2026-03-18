@@ -81,9 +81,8 @@ function ImageCell({ acc }) {
 
   const handleUpload = async (file) => {
     setLoading(true);
-    const compressed = await compressImage(file);
     const form = new FormData();
-    form.append("file", compressed, compressed.name || "image.jpg");
+    form.append("file", file);
     await fetch(`${API}/api/images/${acc}`, { method: "POST", body: form });
     await loadImages();
     setLoading(false);
