@@ -83,7 +83,7 @@ function ImageCell({ acc }) {
     setLoading(true);
     const compressed = await compressImage(file);
     const form = new FormData();
-    form.append("file", compressed);
+    form.append("file", compressed, compressed.name || "image.jpg");
     await fetch(`${API}/api/images/${acc}`, { method: "POST", body: form });
     await loadImages();
     setLoading(false);
