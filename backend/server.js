@@ -20,8 +20,8 @@ const cloudStorage = new CloudinaryStorage({
     const existing = queryAll("SELECT id FROM images WHERE acc = ?", [acc]);
     const num = existing.length + 1;
     return {
-      folder: "data-portal",
-      public_id: `${acc}-${num}`,
+  folder: "data-portal",
+  public_id: `${acc}-${Date.now()}`,
       allowed_formats: ["jpg","jpeg","png","gif","webp","bmp"],
     };
   },
