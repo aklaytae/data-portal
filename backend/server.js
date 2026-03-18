@@ -6,30 +6,28 @@ const initSqlJs = require("sql.js");
 const multer = require("multer");
 const cloudinary = require("cloudinary").v2;
 const { CloudinaryStorage } = require("multer-storage-cloudinary");
-
-// ตั้งค่า Cloudinary
+ 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
-
-// ตั้งค่า multer ใช้ Cloudinary
+ 
 const cloudStorage = new CloudinaryStorage({
   cloudinary,
   params: { folder: "data-portal", allowed_formats: ["jpg","jpeg","png","gif","webp"] },
 });
 const upload = multer({ storage: cloudStorage, limits: { fileSize: 10 * 1024 * 1024 } });
-
+ 
 const app = express();
 const PORT = process.env.PORT || 3002;
 const DB_PATH = path.join(__dirname, "gallery.db");
-
+ 
 app.use(cors());
 app.use(express.json({ limit: "50mb" }));
-
+ 
 let db;
-
+ 
 async function initDB() {
   const SQL = await initSqlJs();
   if (fs.existsSync(DB_PATH)) {
@@ -71,12 +69,12 @@ async function initDB() {
   saveDB();
   console.log("✅ Database พร้อมใช้งาน");
 }
-
+ 
 function saveDB() {
   const data = db.export();
   fs.writeFileSync(DB_PATH, Buffer.from(data));
 }
-
+ 
 function queryAll(sql, params = []) {
   try {
     const stmt = db.prepare(sql);
@@ -87,13 +85,11 @@ function queryAll(sql, params = []) {
     return rows;
   } catch (e) { return []; }
 }
-
+ 
 function queryOne(sql, params = []) {
   return queryAll(sql, params)[0] || null;
 }
-
-// ======= API Routes =======
-
+ 
 app.get("/api/stats", (req, res) => {
   res.json({
     billCount:  queryOne("SELECT COUNT(*) as cnt FROM bill").cnt,
@@ -103,54 +99,54 @@ app.get("/api/stats", (req, res) => {
     companies:  queryOne("SELECT COUNT(DISTINCT company) as cnt FROM bill").cnt,
   });
 });
-
+ 
 app.get("/api/last-import", (req, res) => {
   const row = queryOne("SELECT MAX(imported_date) as last FROM bill");
   res.json({ last: row?.last || null });
 });
-
-// Images routes (ต้องอยู่ก่อน /api/bill/:acc)
+ 
 app.get("/api/images/:acc", (req, res) => {
   const rows = queryAll("SELECT * FROM images WHERE acc = ? ORDER BY date DESC", [req.params.acc]);
   res.json(rows);
 });
-
-app.post("/api/images/:acc", (req, res, next) => {
-  upload.single("file")(req, res, (err) => {
-    if (err) {
-      console.log("Multer error:", err.message, err);
-      return res.status(500).json({ error: err.message });
+ 
+app.post("/api/images/:acc", (req, res) => {
+  upload.single("file")(req, res, async (err) => {
+    try {
+      if (err) {
+        console.error("Upload error:", err.message);
+        return res.status(500).json({ error: err.message });
+      }
+      if (!req.file) {
+        console.error("No file in request");
+        return res.status(400).json({ error: "No file" });
+      }
+      const { acc } = req.params;
+      const url = req.file.path;
+      console.log("Uploaded to Cloudinary:", url);
+      db.run("INSERT INTO images (acc, filename, date) VALUES (?, ?, ?)", [acc, url, Date.now()]);
+      saveDB();
+      res.json({ success: true, filename: url });
+    } catch (e) {
+      console.error("Exception:", e.message);
+      res.status(500).json({ error: e.message });
     }
-    if (!req.file) return res.status(400).json({ error: "No file" });
-    const { acc } = req.params;
-    console.log("Upload file:", JSON.stringify(req.file));
-    const url = req.file.path || req.file.secure_url || req.file.url;
-    db.run("INSERT INTO images (acc, filename, date) VALUES (?, ?, ?)", [acc, url, Date.now()]);
-    saveDB();
-    res.json({ success: true, filename: url });
   });
-  if (!req.file) return res.status(400).json({ error: "No file" });
-  const { acc } = req.params;
-  console.log("Upload file:", JSON.stringify(req.file));
-  const url = req.file.path || req.file.secure_url || req.file.url; // Cloudinary URL
-  db.run("INSERT INTO images (acc, filename, date) VALUES (?, ?, ?)", [acc, url, Date.now()]);
-  saveDB();
-  res.json({ success: true, filename: url });
 });
-
+ 
 app.delete("/api/images/:id", async (req, res) => {
   const img = queryOne("SELECT * FROM images WHERE id = ?", [req.params.id]);
   if (!img) return res.status(404).json({ error: "Not found" });
-  // ลบจาก Cloudinary
   if (img.filename.startsWith("http")) {
-    const publicId = img.filename.split("/").slice(-2).join("/").replace(/\.[^/.]+$/, "");
-    try { await cloudinary.uploader.destroy(publicId); } catch (e) {}
+    const parts = img.filename.split("/");
+    const publicId = parts.slice(-2).join("/").replace(/\.[^/.]+$/, "");
+    try { await cloudinary.uploader.destroy(publicId); } catch (e) { console.error("Cloudinary delete error:", e.message); }
   }
   db.run("DELETE FROM images WHERE id = ?", [req.params.id]);
   saveDB();
   res.json({ success: true });
 });
-
+ 
 app.get("/api/bill", (req, res) => {
   const { search = "", page = 1, limit = 20 } = req.query;
   const offset = (page - 1) * limit;
@@ -165,7 +161,7 @@ app.get("/api/bill", (req, res) => {
   }
   res.json({ rows, total, page: +page, pages: Math.ceil(total / limit) });
 });
-
+ 
 app.get("/api/bill/:acc", (req, res) => {
   const bill = queryOne("SELECT * FROM bill WHERE acc = ?", [req.params.acc]);
   if (!bill) return res.status(404).json({ error: "Not found" });
@@ -175,7 +171,7 @@ app.get("/api/bill/:acc", (req, res) => {
     dpd:   queryOne("SELECT * FROM dpd WHERE acc = ?", [req.params.acc]),
   });
 });
-
+ 
 app.get("/api/limit", (req, res) => {
   const { search = "", page = 1, limit = 20 } = req.query;
   const offset = (page - 1) * limit;
@@ -190,7 +186,7 @@ app.get("/api/limit", (req, res) => {
   }
   res.json({ rows, total, page: +page, pages: Math.ceil(total / limit) });
 });
-
+ 
 app.get("/api/dpd", (req, res) => {
   const { search = "", province = "", page = 1, limit = 20 } = req.query;
   const offset = (page - 1) * limit;
@@ -202,11 +198,11 @@ app.get("/api/dpd", (req, res) => {
   const total = queryOne(`SELECT COUNT(*) as cnt FROM dpd ${where}`, params).cnt;
   res.json({ rows, total, page: +page, pages: Math.ceil(total / limit) });
 });
-
+ 
 app.get("/api/dpd/provinces", (req, res) => {
   res.json(queryAll("SELECT DISTINCT province FROM dpd WHERE province IS NOT NULL ORDER BY province").map(r => r.province));
 });
-
+ 
 app.post("/api/import", (req, res) => {
   const { table, rows } = req.body;
   if (!table || !rows) return res.status(400).json({ error: "Invalid" });
@@ -230,8 +226,7 @@ app.post("/api/import", (req, res) => {
   saveDB();
   res.json({ success: true, count: rows.length });
 });
-
-// ======= Start Server =======
+ 
 initDB().then(() => {
   app.use(express.static(path.join(__dirname, "build")));
   app.get("*", (req, res) => {
