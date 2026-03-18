@@ -15,7 +15,16 @@ cloudinary.config({
  
 const cloudStorage = new CloudinaryStorage({
   cloudinary,
-  params: { folder: "data-portal", allowed_formats: ["jpg","jpeg","png","gif","webp","bmp"] },
+  params: async (req, file) => {
+    const acc = req.params.acc;
+    const existing = queryAll("SELECT id FROM images WHERE acc = ?", [acc]);
+    const num = existing.length + 1;
+    return {
+      folder: "data-portal",
+      public_id: `${acc}-${num}`,
+      allowed_formats: ["jpg","jpeg","png","gif","webp","bmp"],
+    };
+  },
 });
 const upload = multer({ storage: cloudStorage, limits: { fileSize: 10 * 1024 * 1024 } });
  
