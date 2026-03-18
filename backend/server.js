@@ -15,7 +15,7 @@ cloudinary.config({
  
 const cloudStorage = new CloudinaryStorage({
   cloudinary,
-  params: { folder: "data-portal", allowed_formats: ["jpg","jpeg","png","gif","webp"] },
+  params: { folder: "data-portal", allowed_formats: ["jpg","jpeg","png","gif","webp","bmp"] },
 });
 const upload = multer({ storage: cloudStorage, limits: { fileSize: 10 * 1024 * 1024 } });
  
