@@ -289,11 +289,11 @@ function LimitTab({ search }) {
               <tr><td colSpan={4} style={{ padding: 40, textAlign: "center", color: C.textLight, fontSize: 11 }}>ไม่พบข้อมูล</td></tr>
             )}
             {data.rows.map((r, i) => (
-              <tr key={r.id} style={{ borderBottom: `1px solid ${C.border}`, background: i % 2 === 0 ? "#fff" : "#faf9f7" }}>
-                <td style={{ padding: "9px 14px", color: C.accent, fontWeight: 500 }}>{fmt(r.acc)}</td>
-                <td style={{ padding: "9px 14px", color: C.text }}>{fmt(r.name)}</td>
-                <td style={{ padding: "9px 14px", color: C.textMuted }}>{Number(r.allbalance).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                <td style={{ padding: "9px 14px" }} onClick={e => e.stopPropagation()}>
+              <tr key={r.id} style={{ borderBottom: `1px solid ${C.border}`, background: i % 2 === 0 ? "#fff" : "#000000" }}>
+                <td style={{ padding: "14px 14px", color: C.accent, fontWeight: 500 }}>{fmt(r.acc)}</td>
+                <td style={{ padding: "14px 14px", color: C.text }}>{fmt(r.name)}</td>
+                <td style={{ padding: "14px 14px", color: C.textMuted }}>{Number(r.allbalance).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                <td style={{ padding: "14px 14px" }} onClick={e => e.stopPropagation()}>
                   <ImageCell acc={r.acc} />
                 </td>
               </tr>
@@ -416,24 +416,16 @@ export default function App() {
           <div style={{ display: "flex", alignItems: "baseline", gap: 12, marginBottom: 6, flexWrap: "wrap" }}>
             <span style={{ fontFamily: "'Playfair Display',serif", fontSize: 32, fontWeight: 900, color: C.accent, letterSpacing: "-1px" }}>DATA PORTAL</span>
             <span style={{ fontSize: 10, color: C.textLight, letterSpacing: "4px", textTransform: "uppercase" }}>
-              bill · limit · dpd{lastImport ? ` · imported ${new Date(lastImport).toLocaleDateString("th-TH", { day: "2-digit", month: "short", year: "numeric" })}` : ""}
+
             </span>
-            <span style={{ marginLeft: "auto", fontSize: 10, color: connected ? C.success : C.danger, letterSpacing: "2px" }}>
+            <span style={{ marginLeft: "auto", fontSize: 20, color: connected ? C.success : C.danger, letterSpacing: "2px" }}>
               {connected === null ? "..." : connected ? "● connected" : "● offline — รัน backend ก่อน"}
             </span>
           </div>
           <div style={{ height: 1, background: `linear-gradient(90deg,${C.accent}66,transparent)` }} />
         </div>
 
-        {stats && (
-          <div style={{ display: "flex", gap: 12, marginBottom: 36, flexWrap: "wrap" }}>
-            <StatCard icon="📋" label="Bill Records"  value={stats.billCount} />
-            <StatCard icon="💰" label="Limit Records" value={stats.limitCount} />
-            <StatCard icon="📅" label="DPD Records"   value={stats.dpdCount} />
-            <StatCard icon="🏙️" label="จังหวัด"       value={stats.provinces} />
-            <StatCard icon="🏢" label="บริษัท"         value={stats.companies} />
-          </div>
-        )}
+        
 
         <div style={{ marginBottom: 20 }}>
           <input
@@ -442,8 +434,8 @@ export default function App() {
             placeholder="ค้นหา ACC, ชื่อ, บริษัท, จังหวัด..."
             style={{
               background: C.surface, border: `1px solid ${C.border}`,
-              color: C.text, padding: "10px 16px", borderRadius: 6,
-              fontSize: 12, outline: "none", width: 340, fontFamily: "inherit",
+              color: C.text, padding: "10px 16px", borderRadius: 8,
+              fontSize: 16, outline: "none", width: 340, fontFamily: "inherit",
               boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
             }}
           />
