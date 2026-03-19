@@ -19,12 +19,13 @@ const cloudStorage = new CloudinaryStorage({
     const acc = req.params.acc;
     const row = queryOne("SELECT name FROM limit_info WHERE acc = ?", [acc])
              || queryOne("SELECT name FROM dpd WHERE acc = ?", [acc]);
-    const name = row?.name ? row.name.trim().replace(/\s+/g, "-") : "";
+    // ตัดเอาแค่ชื่อ ไม่เอาวันที่หรือข้อมูลอื่น
+    const rawName = row?.name || "";
+    const name = rawName.replace(/\d{2}\/\d{2}\/\d{4}.*/g, "").trim().replace(/\s+/g, "-");
     return {
       folder: "data-portal",
       public_id: `${acc}-${name}-${Date.now()}`,
       allowed_formats: ["jpg","jpeg","png","gif","webp","bmp"],
-      use_filename: false,
     };
   },
 });
