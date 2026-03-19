@@ -19,13 +19,12 @@ const cloudStorage = new CloudinaryStorage({
     const acc = req.params.acc;
     const row = queryOne("SELECT name FROM limit_info WHERE acc = ?", [acc])
              || queryOne("SELECT name FROM dpd WHERE acc = ?", [acc]);
-    const name = row?.name 
-      ? Buffer.from(row.name, 'utf8').toString('base64').replace(/[^a-zA-Z0-9]/g, "").substring(0, 20)
-      : "";
+    const name = row?.name ? row.name.trim().replace(/\s+/g, "-") : "";
     return {
       folder: "data-portal",
       public_id: `${acc}-${name}-${Date.now()}`,
       allowed_formats: ["jpg","jpeg","png","gif","webp","bmp"],
+      use_filename: false,
     };
   },
 });
@@ -81,7 +80,19 @@ async function initDB() {
   saveDB();
   console.log("✅ Database พร้อมใช้งาน");
 }
- 
+
+function thaiToSlug(str) {
+  if (!str) return "";
+  // เอาเฉพาะ Unicode Thai block + space
+  const cleaned = str.replace(/[^\u0E00-\u0E7F\s]/g, "").trim();
+  // encode เป็น hex ย่อๆ
+  let hex = "";
+  for (let i = 0; i < Math.min(cleaned.length, 8); i++) {
+    hex += cleaned.charCodeAt(i).toString(16);
+  }
+  return hex.substring(0, 20);
+}
+
 function saveDB() {
   const data = db.export();
   fs.writeFileSync(DB_PATH, Buffer.from(data));
