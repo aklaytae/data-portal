@@ -126,7 +126,7 @@ function ImageCell({ acc }) {
               <span style={{ color: C.accent, fontSize: 11, letterSpacing: "2px", textTransform: "uppercase" }}>รูปภาพ — {acc}</span>
               <div style={{ display: "flex", gap: 8 }}>
                 <button onClick={() => fileRef.current.click()} disabled={loading}
-                  style={{ background: C.accent, color: "#fff", border: "none", padding: "6px 14px", borderRadius: 4, fontSize: 11, cursor: "pointer" }}>
+                  style={{ background: C.accent, color: "#fff", border: "none", padding: "14px 14px", borderRadius: 7, fontSize: 16, cursor: "pointer" }}>
                   {loading ? "⏳" : "+ อัปโหลด"}
                 </button>
                 <button onClick={() => setModal(false)} style={{ background: "none", border: "none", color: C.textLight, cursor: "pointer", fontSize: 18 }}>✕</button>
@@ -208,9 +208,9 @@ function BillTab({ search }) {
                 style={{ borderBottom: `1px solid ${C.border}`, background: i % 2 === 0 ? "#fff" : "#faf9f7", cursor: "pointer", transition: "background 0.1s" }}
                 onMouseEnter={e => e.currentTarget.style.background = C.hover}
                 onMouseLeave={e => e.currentTarget.style.background = i % 2 === 0 ? "#fff" : "#faf9f7"}>
-                <td style={{ padding: "9px 14px", color: C.accent, fontWeight: 500 }}>{fmt(r.acc)}</td>
-                <td style={{ padding: "9px 14px", color: C.text, maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{fmt(r.name)}</td>
-                <td style={{ padding: "9px 14px", color: C.textMuted }}>{Number(r.call).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                <td style={{ padding: "14px 14px", color: C.accent, fontWeight: 500 }}>{fmt(r.acc)}</td>
+                <td style={{ padding: "14px 14px", color: C.text, maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{fmt(r.name)}</td>
+                <td style={{ padding: "14px 14px", color: C.textMuted }}>{Number(r.call).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
               </tr>
             ))}
           </tbody>
@@ -349,8 +349,8 @@ function DPDTab({ search }) {
             )}
             {data.rows.map((r, i) => (
               <tr key={r.id} style={{ borderBottom: `1px solid ${C.border}`, background: i % 2 === 0 ? "#fff" : "#faf9f7" }}>
-                <td style={{ padding: "9px 14px", color: C.text }}>{fmt(r.name)}</td>
-                <td style={{ padding: "9px 14px", color: C.textMuted }}>
+                <td style={{ padding: "14px 14px", color: C.text }}>{fmt(r.name)}</td>
+                <td style={{ padding: "14px 14px", color: C.textMuted }}>
                   {[r.tel1, r.tel2, r.tel3, r.tel4].filter(Boolean).map((tel, idx, arr) => (
                     <span key={idx}>
                       <a href={`tel:${tel.replace(/\s+/g,'')}`} style={{ color: "inherit", textDecoration: "none" }}
@@ -360,10 +360,10 @@ function DPDTab({ search }) {
                     </span>
                   )) || "—"}
                 </td>
-                <td style={{ padding: "9px 14px", color: C.textMuted, maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                <td style={{ padding: "14px 14px", color: C.textMuted, maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                   {[r.address, r.road, r.soy].filter(Boolean).join(" ") || "—"}
                 </td>
-                <td style={{ padding: "9px 14px", color: C.textMuted }}>{fmt(r.tambol)}</td>
+                <td style={{ padding: "14px 14px", color: C.textMuted }}>{fmt(r.tambol)}</td>
               </tr>
             ))}
           </tbody>
