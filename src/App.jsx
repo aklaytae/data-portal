@@ -264,12 +264,12 @@ function LimitTab({ search }) {
   return (
     <div>
       <div style={{ marginBottom: 16 }}>
-        <span style={{ fontSize: 11, color: "#3a3a5a" }}>ทั้งหมด {data.total?.toLocaleString()} รายการ</span>
+        <span style={{ fontSize: 16, color: "#3a3a5a" }}>ทั้งหมด {data.total?.toLocaleString()} รายการ</span>
       </div>
-      <div style={{ border: "1px solid #1a1a2e", borderRadius: 2, overflow: "hidden" }}>
-        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+      <div style={{ border: "1px solid #f0f0f0", borderRadius: 2, overflow: "hidden" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 16 }}>
           <thead>
-            <tr style={{ background: "#0e0e18" }}>
+            <tr style={{ background: "#ffffff" }}>
               {["ACC","ชื่อ","ยอดคงเหลือ","Pic"].map(h => (
                 <th key={h} style={{ padding: "10px 14px", textAlign: "left", color: "#3a3a5a", fontWeight: 400, fontSize: 10, letterSpacing: "2px", textTransform: "uppercase", whiteSpace: "nowrap", borderBottom: "1px solid #1a1a2e" }}>{h}</th>
               ))}
@@ -412,7 +412,7 @@ export default function App() {
 
         <div style={{ marginBottom: 40 }}>
           <div style={{ display: "flex", alignItems: "baseline", gap: 12, marginBottom: 6, flexWrap: "wrap" }}>
-            <span style={{ fontFamily: "'Playfair Display',serif", fontSize: 32, fontWeight: 900, color: "#c9a96e", letterSpacing: "-1px" }}>DATA PORTAL</span>
+            <span style={{ fontFamily: "'Playfair Display',serif", fontSize: 32, fontWeight: 900, color: "#c9a96e", letterSpacing: "-1px" }}>DATA</span>
             <span style={{ fontSize: 10, color: "#5a5a7a", letterSpacing: "4px", textTransform: "uppercase" }}>
             </span>
             <span style={{ marginLeft: "auto", fontSize: 32, color: connected ? "#4aaa6e" : "#aa4a4a", letterSpacing: "2px" }}>
