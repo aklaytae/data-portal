@@ -6,10 +6,10 @@ const fmt = (v) => (v == null || v === "" ? "—" : v);
 
 function StatCard({ label, value, icon }) {
   return (
-    <div style={{ background: "#9a9aa1", border: "1px solid #000000", borderRadius: 2, padding: "20px 24px", flex: 1, minWidth: 140 }}>
+    <div style={{ background: "#0e0e18", border: "1px solid #1a1a2e", borderRadius: 2, padding: "20px 24px", flex: 1, minWidth: 140 }}>
       <div style={{ fontSize: 24, marginBottom: 8 }}>{icon}</div>
-      <div style={{ fontSize: 28, fontWeight: 500, color: "#090263", letterSpacing: "-1px" }}>{value?.toLocaleString()}</div>
-      <div style={{ fontSize: 10, color: "#464653", letterSpacing: "3px", textTransform: "uppercase", marginTop: 4 }}>{label}</div>
+      <div style={{ fontSize: 28, fontWeight: 500, color: "#c9a96e", letterSpacing: "-1px" }}>{value?.toLocaleString()}</div>
+      <div style={{ fontSize: 10, color: "#3a3a5a", letterSpacing: "3px", textTransform: "uppercase", marginTop: 4 }}>{label}</div>
     </div>
   );
 }
@@ -414,9 +414,8 @@ export default function App() {
           <div style={{ display: "flex", alignItems: "baseline", gap: 12, marginBottom: 6, flexWrap: "wrap" }}>
             <span style={{ fontFamily: "'Playfair Display',serif", fontSize: 32, fontWeight: 900, color: "#c9a96e", letterSpacing: "-1px" }}>DATA PORTAL</span>
             <span style={{ fontSize: 10, color: "#5a5a7a", letterSpacing: "4px", textTransform: "uppercase" }}>
-              bill · limit · dpd{lastImport ? ` · imported ${new Date(lastImport).toLocaleDateString("th-TH", { day: "2-digit", month: "short", year: "numeric" })}` : ""}
             </span>
-            <span style={{ marginLeft: "auto", fontSize: 10, color: connected ? "#4aaa6e" : "#aa4a4a", letterSpacing: "2px" }}>
+            <span style={{ marginLeft: "auto", fontSize: 32, color: connected ? "#4aaa6e" : "#aa4a4a", letterSpacing: "2px" }}>
               {connected === null ? "..." : connected ? "● connected" : "● offline — รัน backend ก่อน"}
             </span>
           </div>
@@ -428,9 +427,9 @@ export default function App() {
             onChange={e => setSearch(e.target.value)}
             placeholder="ค้นหา ACC, ชื่อ, บริษัท, จังหวัด..."
             style={{
-              background: "#0e0e18", border: "1px solid #1a1a2e",
-              color: "#e8e4d9", padding: "10px 16px", borderRadius: 2,
-              fontSize: 12, outline: "none", width: 340, fontFamily: "inherit",
+              background: "#ffffff", border: "1px solid #1a1a2e",
+              color: "#000000", padding: "10px 16px", borderRadius: 2,
+              fontSize: 16, outline: "none", width: 340, fontFamily: "inherit",
             }}
           />
         </div>
@@ -442,7 +441,7 @@ export default function App() {
                 background: tab === t.key ? "#c9a96e" : "transparent",
                 color: tab === t.key ? "#0a0a0f" : "#5a5a7a",
                 border: "none", padding: "10px 24px", cursor: "pointer",
-                fontSize: 11, letterSpacing: "2px", textTransform: "uppercase",
+                fontSize: 16, letterSpacing: "2px", textTransform: "uppercase",
                 fontFamily: "inherit", transition: "all 0.15s",
               }}>
               {t.label}
