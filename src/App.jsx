@@ -6,7 +6,7 @@ const fmt = (v) => (v == null || v === "" ? "—" : v);
 
 function StatCard({ label, value, icon }) {
   return (
-    <div style={{ background: "#0e0e18", border: "1px solid #1a1a2e", borderRadius: 2, padding: "20px 24px", flex: 1, minWidth: 140 }}>
+    <div style={{ background: "#9a9aa1", border: "1px solid #1a1a2e", borderRadius: 2, padding: "20px 24px", flex: 1, minWidth: 140 }}>
       <div style={{ fontSize: 24, marginBottom: 8 }}>{icon}</div>
       <div style={{ fontSize: 28, fontWeight: 500, color: "#c9a96e", letterSpacing: "-1px" }}>{value?.toLocaleString()}</div>
       <div style={{ fontSize: 10, color: "#3a3a5a", letterSpacing: "3px", textTransform: "uppercase", marginTop: 4 }}>{label}</div>
