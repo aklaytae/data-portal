@@ -15,13 +15,14 @@ cloudinary.config({
  
 const cloudStorage = new CloudinaryStorage({
   cloudinary,
-  params: async (req, file) => {
+ params: async (req, file) => {
     const acc = req.params.acc;
-    const existing = queryAll("SELECT id FROM images WHERE acc = ?", [acc]);
-    const num = existing.length + 1;
+    const row = queryOne("SELECT name FROM limit_info WHERE acc = ?", [acc])
+             || queryOne("SELECT name FROM dpd WHERE acc = ?", [acc]);
+    const name = row?.name ? row.name.replace(/\s+/g, "_").substring(0, 30) : "";
     return {
-  folder: "data-portal",
-  public_id: `${acc}-${Date.now()}`,
+      folder: "data-portal",
+      public_id: `${acc}-${name}-${Date.now()}`,
       allowed_formats: ["jpg","jpeg","png","gif","webp","bmp"],
     };
   },
