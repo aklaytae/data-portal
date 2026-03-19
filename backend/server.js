@@ -19,7 +19,9 @@ const cloudStorage = new CloudinaryStorage({
     const acc = req.params.acc;
     const row = queryOne("SELECT name FROM limit_info WHERE acc = ?", [acc])
              || queryOne("SELECT name FROM dpd WHERE acc = ?", [acc]);
-    const name = row?.name ? row.name.replace(/\s+/g, "_").substring(0, 30) : "";
+    const name = row?.name 
+      ? Buffer.from(row.name, 'utf8').toString('base64').replace(/[^a-zA-Z0-9]/g, "").substring(0, 20)
+      : "";
     return {
       folder: "data-portal",
       public_id: `${acc}-${name}-${Date.now()}`,
