@@ -17,11 +17,11 @@ const cloudStorage = new CloudinaryStorage({
   cloudinary,
   params: async (req, file) => {
     const acc = req.params.acc;
-    const existing = queryAll("SELECT id FROM images WHERE acc = ?", [acc]);
-    const num = existing.length + 1;
+    const row = queryOne("SELECT name FROM bill WHERE acc = ?", [acc]);
+    const name = row?.name ? row.name.replace(/[^a-zA-Z0-9ก-๙]/g, "_").substring(0, 30) : "";
     return {
-  folder: "data-portal",
-  public_id: `${acc}-${Date.now()}`,
+      folder: "data-portal",
+      public_id: `${acc}-${name}-${Date.now()}`,
       allowed_formats: ["jpg","jpeg","png","gif","webp","bmp"],
     };
   },
