@@ -289,7 +289,7 @@ function LimitTab({ search }) {
               <tr><td colSpan={4} style={{ padding: 40, textAlign: "center", color: C.textLight, fontSize: 11 }}>ไม่พบข้อมูล</td></tr>
             )}
             {data.rows.map((r, i) => (
-              <tr key={r.id} style={{ borderBottom: `1px solid ${C.border}`, background: i % 2 === 0 ? "#fff" : "#000000" }}>
+              <tr key={r.id} style={{ borderBottom: `1px solid ${C.border}`, background: i % 2 === 0 ? "#fff" : "#faf9f7" }}>
                 <td style={{ padding: "14px 14px", color: C.accent, fontWeight: 500 }}>{fmt(r.acc)}</td>
                 <td style={{ padding: "14px 14px", color: C.text }}>{fmt(r.name)}</td>
                 <td style={{ padding: "14px 14px", color: C.textMuted }}>{Number(r.allbalance).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
