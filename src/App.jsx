@@ -1,23 +1,13 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 
 const API = "";
-
 const fmt = (v) => (v == null || v === "" ? "—" : v);
 
 const C = {
-  bg: "#f5f4f0",
-  surface: "#ffffff",
-  border: "#e2e0d8",
-  borderDark: "#d0cec4",
-  text: "#1a1a1a",
-  textMuted: "#6b6b6b",
-  textLight: "#9a9a9a",
-  accent: "#b8860b",
-  accentLight: "rgba(184,134,11,0.1)",
-  accentBorder: "rgba(184,134,11,0.3)",
-  hover: "rgba(184,134,11,0.06)",
-  danger: "#dc2626",
-  success: "#16a34a",
+  bg: "#f5f4f0", surface: "#ffffff", border: "#e2e0d8", borderDark: "#d0cec4",
+  text: "#1a1a1a", textMuted: "#6b6b6b", textLight: "#9a9a9a",
+  accent: "#b8860b", accentLight: "rgba(184,134,11,0.1)", accentBorder: "rgba(184,134,11,0.3)",
+  hover: "rgba(184,134,11,0.06)", danger: "#dc2626", success: "#16a34a",
 };
 
 function StatCard({ label, value, icon }) {
@@ -57,10 +47,203 @@ function PBtn({ children, onClick, disabled, active }) {
   );
 }
 
+function ImageEditor({ file, onDone, onCancel }) {
+  const canvasRef = useRef();
+  const [img, setImg] = useState(null);
+  const [tool, setTool] = useState("text"); // text | circle | pen
+  const [color, setColor] = useState("#ff0000");
+  const [lineWidth, setLineWidth] = useState(3);
+  // text
+  const [text, setText] = useState("");
+  const [fontSize, setFontSize] = useState(32);
+  const [textPos, setTextPos] = useState({ x: 20, y: 50 });
+  const [draggingText, setDraggingText] = useState(false);
+  // shapes
+  const [shapes, setShapes] = useState([]); // {type, x, y, r, color, lw} or {type:'pen', points, color, lw}
+  const [drawing, setDrawing] = useState(false);
+  const [startPos, setStartPos] = useState(null);
+  const [penPoints, setPenPoints] = useState([]);
+  const [previewShape, setPreviewShape] = useState(null);
+
+  useEffect(() => {
+    const image = new Image();
+    image.onload = () => setImg(image);
+    image.src = URL.createObjectURL(file);
+  }, [file]);
+
+  const getPos = (e) => {
+    const canvas = canvasRef.current;
+    const rect = canvas.getBoundingClientRect();
+    return {
+      x: (e.clientX - rect.left) * (canvas.width / rect.width),
+      y: (e.clientY - rect.top) * (canvas.height / rect.height),
+    };
+  };
+
+  const redraw = (extraShape = null) => {
+    const canvas = canvasRef.current;
+    if (!canvas || !img) return;
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    const all = extraShape ? [...shapes, extraShape] : shapes;
+    all.forEach(s => drawShape(ctx, s));
+    // draw text
+    if (text) {
+      ctx.font = `bold ${fontSize}px sans-serif`;
+      ctx.strokeStyle = "rgba(0,0,0,0.5)";
+      ctx.lineWidth = 3;
+      ctx.strokeText(text, textPos.x, textPos.y);
+      ctx.fillStyle = color;
+      ctx.fillText(text, textPos.x, textPos.y);
+    }
+  };
+
+  const drawShape = (ctx, s) => {
+    ctx.strokeStyle = s.color;
+    ctx.lineWidth = s.lw;
+    ctx.fillStyle = "transparent";
+    if (s.type === "circle") {
+      ctx.beginPath();
+      ctx.arc(s.cx, s.cy, s.r, 0, Math.PI * 2);
+      ctx.stroke();
+    } else if (s.type === "pen") {
+      if (s.points.length < 2) return;
+      ctx.beginPath();
+      ctx.moveTo(s.points[0].x, s.points[0].y);
+      s.points.forEach(p => ctx.lineTo(p.x, p.y));
+      ctx.stroke();
+    }
+  };
+
+  useEffect(() => { redraw(); }, [img, shapes, text, fontSize, textPos, color]);
+
+  const initCanvas = () => {
+    const canvas = canvasRef.current;
+    if (!canvas || !img) return;
+    const MAX = 600;
+    let w = img.width, h = img.height;
+    if (w > MAX) { h = Math.round(h * MAX / w); w = MAX; }
+    if (canvas.width !== w || canvas.height !== h) {
+      canvas.width = w;
+      canvas.height = h;
+    }
+  };
+
+  useEffect(() => { if (img) { initCanvas(); redraw(); } }, [img]);
+
+  const onMouseDown = (e) => {
+    const pos = getPos(e);
+    if (tool === "text") {
+      if (Math.abs(pos.x - textPos.x) < 150 && Math.abs(pos.y - textPos.y) < 40) setDraggingText(true);
+    } else if (tool === "circle") {
+      setDrawing(true);
+      setStartPos(pos);
+    } else if (tool === "pen") {
+      setDrawing(true);
+      setPenPoints([pos]);
+    }
+  };
+
+  const onMouseMove = (e) => {
+    const pos = getPos(e);
+    if (tool === "text" && draggingText) {
+      setTextPos(pos);
+    } else if (tool === "circle" && drawing && startPos) {
+      const r = Math.hypot(pos.x - startPos.x, pos.y - startPos.y);
+      redraw({ type: "circle", cx: startPos.x, cy: startPos.y, r, color, lw: lineWidth });
+    } else if (tool === "pen" && drawing) {
+      const pts = [...penPoints, pos];
+      setPenPoints(pts);
+      redraw({ type: "pen", points: pts, color, lw: lineWidth });
+    }
+  };
+
+  const onMouseUp = (e) => {
+    const pos = getPos(e);
+    if (tool === "text") {
+      setDraggingText(false);
+    } else if (tool === "circle" && drawing && startPos) {
+      const r = Math.hypot(pos.x - startPos.x, pos.y - startPos.y);
+      if (r > 2) setShapes(prev => [...prev, { type: "circle", cx: startPos.x, cy: startPos.y, r, color, lw: lineWidth }]);
+      setDrawing(false); setStartPos(null);
+    } else if (tool === "pen" && drawing) {
+      if (penPoints.length > 1) setShapes(prev => [...prev, { type: "pen", points: penPoints, color, lw: lineWidth }]);
+      setDrawing(false); setPenPoints([]);
+    }
+  };
+
+  const undo = () => setShapes(prev => prev.slice(0, -1));
+  const clear = () => { setShapes([]); setText(""); };
+
+  const handleDone = () => {
+    canvasRef.current.toBlob(blob => {
+      onDone(new File([blob], "image.jpg", { type: "image/jpeg" }));
+    }, "image/jpeg", 0.9);
+  };
+
+  const toolBtn = (t, label) => (
+    <button onClick={() => setTool(t)} style={{
+      padding: "6px 14px", fontSize: 12, borderRadius: 4, cursor: "pointer",
+      background: tool === t ? C.accent : "transparent",
+      color: tool === t ? "#fff" : C.textMuted,
+      border: `1px solid ${tool === t ? C.accent : C.border}`,
+    }}>{label}</button>
+  );
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 300, padding: 24 }}>
+      <div style={{ background: "#fff", borderRadius: 8, padding: 20, maxWidth: 700, width: "100%", boxShadow: "0 20px 60px rgba(0,0,0,0.3)", maxHeight: "95vh", overflow: "auto" }}>
+        <div style={{ fontSize: 13, fontWeight: 500, color: C.text, marginBottom: 12 }}>แต่งรูปก่อนอัปโหลด</div>
+
+        {/* Toolbar */}
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", marginBottom: 10, padding: "8px 10px", background: "#f9f8f5", borderRadius: 6, border: `1px solid ${C.border}` }}>
+          {toolBtn("text", "✏️ ข้อความ")}
+          {toolBtn("circle", "⭕ วงกลม")}
+          {toolBtn("pen", "🖊️ วาด")}
+          <div style={{ width: 1, height: 24, background: C.border, margin: "0 4px" }} />
+          <input type="color" value={color} onChange={e => setColor(e.target.value)} title="สี"
+            style={{ width: 32, height: 32, border: `1px solid ${C.border}`, borderRadius: 4, cursor: "pointer", padding: 2 }} />
+          <input type="number" value={lineWidth} onChange={e => setLineWidth(+e.target.value)} min={1} max={20} title="ความหนา"
+            style={{ width: 52, padding: "4px 6px", border: `1px solid ${C.border}`, borderRadius: 4, fontSize: 12, outline: "none" }} />
+          <div style={{ width: 1, height: 24, background: C.border, margin: "0 4px" }} />
+          <button onClick={undo} title="undo" style={{ padding: "6px 10px", border: `1px solid ${C.border}`, borderRadius: 4, cursor: "pointer", background: "transparent", fontSize: 12, color: C.textMuted }}>↩ undo</button>
+          <button onClick={clear} style={{ padding: "6px 10px", border: `1px solid ${C.border}`, borderRadius: 4, cursor: "pointer", background: "transparent", fontSize: 12, color: C.danger }}>ล้าง</button>
+        </div>
+
+        {/* Text options */}
+        {tool === "text" && (
+          <div style={{ display: "flex", gap: 8, marginBottom: 8, alignItems: "center" }}>
+            <input value={text} onChange={e => setText(e.target.value)} placeholder="พิมพ์ข้อความ..."
+              style={{ flex: 1, padding: "7px 12px", border: `1px solid ${C.border}`, borderRadius: 4, fontSize: 13, outline: "none" }} />
+            <input type="number" value={fontSize} onChange={e => setFontSize(+e.target.value)} min={10} max={120} title="ขนาด"
+              style={{ width: 60, padding: "7px 8px", border: `1px solid ${C.border}`, borderRadius: 4, fontSize: 12, outline: "none" }} />
+          </div>
+        )}
+
+        <div style={{ fontSize: 11, color: C.textLight, marginBottom: 6 }}>
+          {tool === "text" && "ลากข้อความเพื่อเปลี่ยนตำแหน่ง"}
+          {tool === "circle" && "คลิกแล้วลากเพื่อวาดวงกลม"}
+          {tool === "pen" && "คลิกแล้วลากเพื่อวาดเส้น"}
+        </div>
+
+        <canvas ref={canvasRef}
+          style={{ width: "100%", borderRadius: 4, border: `1px solid ${C.border}`, display: "block", cursor: tool === "text" ? (draggingText ? "grabbing" : "grab") : "crosshair" }}
+          onMouseDown={onMouseDown} onMouseMove={onMouseMove} onMouseUp={onMouseUp} onMouseLeave={onMouseUp} />
+
+        <div style={{ display: "flex", gap: 8, marginTop: 12, justifyContent: "flex-end" }}>
+          <button onClick={onCancel} style={{ padding: "8px 20px", border: `1px solid ${C.border}`, borderRadius: 4, fontSize: 12, cursor: "pointer", background: "transparent", color: C.textMuted }}>ยกเลิก</button>
+          <button onClick={handleDone} style={{ padding: "8px 20px", background: C.accent, color: "#fff", border: "none", borderRadius: 4, fontSize: 12, cursor: "pointer" }}>อัปโหลด</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ImageCell({ acc }) {
   const [images, setImages] = useState([]);
   const [modal, setModal] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [editFile, setEditFile] = useState(null);
   const fileRef = useRef();
 
   const loadImages = async () => {
@@ -69,34 +252,10 @@ function ImageCell({ acc }) {
     setImages(data);
   };
 
-  const compressImage = (file) => {
-    return new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const img = new Image();
-        img.onload = () => {
-          const canvas = document.createElement("canvas");
-          const MAX = 1200;
-          let w = img.width, h = img.height;
-          if (w > MAX || h > MAX) {
-            if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
-            else { w = Math.round(w * MAX / h); h = MAX; }
-          }
-          canvas.width = w; canvas.height = h;
-          canvas.getContext("2d").drawImage(img, 0, 0, w, h);
-          canvas.toBlob((blob) => resolve(new File([blob], file.name, { type: "image/jpeg" })), "image/jpeg", 0.8);
-        };
-        img.src = e.target.result;
-      };
-      reader.readAsDataURL(file);
-    });
-  };
-
   const handleUpload = async (file) => {
     setLoading(true);
-    const compressed = await compressImage(file);
     const form = new FormData();
-    form.append("file", compressed, "image.jpg");
+    form.append("file", file, "image.jpg");
     await fetch(`${API}/api/images/${acc}`, { method: "POST", body: form });
     await loadImages();
     setLoading(false);
@@ -117,6 +276,14 @@ function ImageCell({ acc }) {
         borderRadius: 4, fontSize: 10, letterSpacing: "1px", whiteSpace: "nowrap",
       }}>📷 รูป</button>
 
+      {editFile && (
+        <ImageEditor
+          file={editFile}
+          onDone={async (f) => { setEditFile(null); await handleUpload(f); }}
+          onCancel={() => setEditFile(null)}
+        />
+      )}
+
       {modal && (
         <div onClick={() => setModal(false)}
           style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200, backdropFilter: "blur(4px)", padding: 24 }}>
@@ -126,13 +293,13 @@ function ImageCell({ acc }) {
               <span style={{ color: C.accent, fontSize: 11, letterSpacing: "2px", textTransform: "uppercase" }}>รูปภาพ — {acc}</span>
               <div style={{ display: "flex", gap: 8 }}>
                 <button onClick={() => fileRef.current.click()} disabled={loading}
-                  style={{ background: C.accent, color: "#fff", border: "none", padding: "14px 14px", borderRadius: 7, fontSize: 16, cursor: "pointer" }}>
+                  style={{ background: C.accent, color: "#fff", border: "none", padding: "8px 16px", borderRadius: 4, fontSize: 12, cursor: "pointer" }}>
                   {loading ? "⏳" : "+ อัปโหลด"}
                 </button>
                 <button onClick={() => setModal(false)} style={{ background: "none", border: "none", color: C.textLight, cursor: "pointer", fontSize: 18 }}>✕</button>
               </div>
               <input ref={fileRef} type="file" accept="image/*" style={{ display: "none" }}
-                onChange={e => e.target.files[0] && handleUpload(e.target.files[0])} />
+                onChange={e => { if (e.target.files[0]) { setEditFile(e.target.files[0]); e.target.value = ""; } }} />
             </div>
             <div style={{ padding: 20 }}>
               {images.length === 0 ? (
@@ -205,19 +372,18 @@ function BillTab({ search }) {
             )}
             {data.rows.map((r, i) => (
               <tr key={r.id} onClick={() => openDetail(r.acc)}
-                style={{ borderBottom: `1px solid ${C.border}`, background: i % 2 === 0 ? "#fff" : "#faf9f7", cursor: "pointer", transition: "background 0.1s" }}
+                style={{ borderBottom: `1px solid ${C.border}`, background: i % 2 === 0 ? "#fff" : "#faf9f7", cursor: "pointer" }}
                 onMouseEnter={e => e.currentTarget.style.background = C.hover}
                 onMouseLeave={e => e.currentTarget.style.background = i % 2 === 0 ? "#fff" : "#faf9f7"}>
-                <td style={{ padding: "14px 14px", color: C.accent, fontWeight: 500 }}>{fmt(r.acc)}</td>
-                <td style={{ padding: "14px 14px", color: C.text, maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{fmt(r.name)}</td>
-                <td style={{ padding: "14px 14px", color: C.textMuted }}>{Number(r.call).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                <td style={{ padding: "14px", color: C.accent, fontWeight: 500 }}>{fmt(r.acc)}</td>
+                <td style={{ padding: "14px", color: C.text, maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{fmt(r.name)}</td>
+                <td style={{ padding: "14px", color: C.textMuted }}>{Number(r.call).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
       <Pagination page={page} pages={data.pages} onPage={setPage} />
-
       {detail && (
         <div onClick={() => { setDetail(null); setSelected(null); }}
           style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, backdropFilter: "blur(4px)", padding: 24 }}>
@@ -290,10 +456,10 @@ function LimitTab({ search }) {
             )}
             {data.rows.map((r, i) => (
               <tr key={r.id} style={{ borderBottom: `1px solid ${C.border}`, background: i % 2 === 0 ? "#fff" : "#faf9f7" }}>
-                <td style={{ padding: "14px 14px", color: C.accent, fontWeight: 500 }}>{fmt(r.acc)}</td>
-                <td style={{ padding: "14px 14px", color: C.text }}>{fmt(r.name)}</td>
-                <td style={{ padding: "14px 14px", color: C.textMuted }}>{Number(r.allbalance).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                <td style={{ padding: "14px 14px" }} onClick={e => e.stopPropagation()}>
+                <td style={{ padding: "14px", color: C.accent, fontWeight: 500 }}>{fmt(r.acc)}</td>
+                <td style={{ padding: "14px", color: C.text }}>{fmt(r.name)}</td>
+                <td style={{ padding: "14px", color: C.textMuted }}>{Number(r.allbalance).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                <td style={{ padding: "14px" }} onClick={e => e.stopPropagation()}>
                   <ImageCell acc={r.acc} />
                 </td>
               </tr>
@@ -349,8 +515,8 @@ function DPDTab({ search }) {
             )}
             {data.rows.map((r, i) => (
               <tr key={r.id} style={{ borderBottom: `1px solid ${C.border}`, background: i % 2 === 0 ? "#fff" : "#faf9f7" }}>
-                <td style={{ padding: "14px 14px", color: C.text }}>{fmt(r.name)}</td>
-                <td style={{ padding: "14px 14px", color: C.textMuted }}>
+                <td style={{ padding: "14px", color: C.text }}>{fmt(r.name)}</td>
+                <td style={{ padding: "14px", color: C.textMuted }}>
                   {[r.tel1, r.tel2, r.tel3, r.tel4].filter(Boolean).map((tel, idx, arr) => (
                     <span key={idx}>
                       <a href={`tel:${tel.replace(/\s+/g,'')}`} style={{ color: "inherit", textDecoration: "none" }}
@@ -360,10 +526,10 @@ function DPDTab({ search }) {
                     </span>
                   )) || "—"}
                 </td>
-                <td style={{ padding: "14px 14px", color: C.textMuted, maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                <td style={{ padding: "14px", color: C.textMuted, maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                   {[r.address, r.road, r.soy].filter(Boolean).join(" ") || "—"}
                 </td>
-                <td style={{ padding: "14px 14px", color: C.textMuted }}>{fmt(r.tambol)}</td>
+                <td style={{ padding: "14px", color: C.textMuted }}>{fmt(r.tambol)}</td>
               </tr>
             ))}
           </tbody>
@@ -406,61 +572,48 @@ export default function App() {
         ::-webkit-scrollbar { width: 4px; height: 4px; }
         ::-webkit-scrollbar-track { background: #f0efe9; }
         ::-webkit-scrollbar-thumb { background: #d0cec4; }
-        input::placeholder { color: #b0ae a6; }
+        input::placeholder { color: #b0aea6; }
         select option { background: #fff; }
       `}</style>
-
       <div style={{ maxWidth: 1100, margin: "0 auto" }}>
-
         <div style={{ marginBottom: 40 }}>
           <div style={{ display: "flex", alignItems: "baseline", gap: 12, marginBottom: 6, flexWrap: "wrap" }}>
             <span style={{ fontFamily: "'Playfair Display',serif", fontSize: 32, fontWeight: 900, color: C.accent, letterSpacing: "-1px" }}>DATA PORTAL</span>
             <span style={{ fontSize: 10, color: C.textLight, letterSpacing: "4px", textTransform: "uppercase" }}>
-
+              bill · limit · dpd{lastImport ? ` · imported ${new Date(lastImport).toLocaleDateString("th-TH", { day: "2-digit", month: "short", year: "numeric" })}` : ""}
             </span>
-            <span style={{ marginLeft: "auto", fontSize: 20, color: connected ? C.success : C.danger, letterSpacing: "2px" }}>
+            <span style={{ marginLeft: "auto", fontSize: 10, color: connected ? C.success : C.danger, letterSpacing: "2px" }}>
               {connected === null ? "..." : connected ? "● connected" : "● offline — รัน backend ก่อน"}
             </span>
           </div>
           <div style={{ height: 1, background: `linear-gradient(90deg,${C.accent}66,transparent)` }} />
         </div>
-
-        
-
+        {stats && (
+          <div style={{ display: "flex", gap: 12, marginBottom: 36, flexWrap: "wrap" }}>
+            <StatCard icon="📋" label="Bill Records"  value={stats.billCount} />
+            <StatCard icon="💰" label="Limit Records" value={stats.limitCount} />
+            <StatCard icon="📅" label="DPD Records"   value={stats.dpdCount} />
+            <StatCard icon="🏙️" label="จังหวัด"       value={stats.provinces} />
+            <StatCard icon="🏢" label="บริษัท"         value={stats.companies} />
+          </div>
+        )}
         <div style={{ marginBottom: 20 }}>
-          <input
-            value={search}
-            onChange={e => setSearch(e.target.value)}
+          <input value={search} onChange={e => setSearch(e.target.value)}
             placeholder="ค้นหา ACC, ชื่อ, บริษัท, จังหวัด..."
-            style={{
-              background: C.surface, border: `1px solid ${C.border}`,
-              color: C.text, padding: "10px 16px", borderRadius: 8,
-              fontSize: 16, outline: "none", width: 340, fontFamily: "inherit",
-              boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
-            }}
-          />
+            style={{ background: C.surface, border: `1px solid ${C.border}`, color: C.text, padding: "10px 16px", borderRadius: 8, fontSize: 14, outline: "none", width: 340, fontFamily: "inherit", boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }} />
         </div>
-
         <div style={{ display: "flex", gap: 2, marginBottom: 24, borderBottom: `1px solid ${C.border}` }}>
           {tabs.map(t => (
             <button key={t.key} onClick={() => setTab(t.key)}
-              style={{
-                background: tab === t.key ? C.accent : "transparent",
-                color: tab === t.key ? "#fff" : C.textMuted,
-                border: "none", padding: "10px 24px", cursor: "pointer",
-                fontSize: 11, letterSpacing: "2px", textTransform: "uppercase",
-                fontFamily: "inherit", transition: "all 0.15s", borderRadius: "4px 4px 0 0",
-              }}>
+              style={{ background: tab === t.key ? C.accent : "transparent", color: tab === t.key ? "#fff" : C.textMuted, border: "none", padding: "10px 24px", cursor: "pointer", fontSize: 11, letterSpacing: "2px", textTransform: "uppercase", fontFamily: "inherit", transition: "all 0.15s", borderRadius: "4px 4px 0 0" }}>
               {t.label}
               {t.count != null && <span style={{ marginLeft: 8, fontSize: 10, opacity: 0.7 }}>({t.count?.toLocaleString()})</span>}
             </button>
           ))}
         </div>
-
         {tab === "bill"  && <BillTab  search={search} />}
         {tab === "limit" && <LimitTab search={search} />}
         {tab === "dpd"   && <DPDTab   search={search} />}
-
       </div>
     </div>
   );
