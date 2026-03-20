@@ -74,9 +74,11 @@ function ImageEditor({ file, onDone, onCancel }) {
   const getPos = (e) => {
     const canvas = canvasRef.current;
     const rect = canvas.getBoundingClientRect();
+    const clientX = e.clientX ?? e.touches?.[0]?.clientX;
+    const clientY = e.clientY ?? e.touches?.[0]?.clientY;
     return {
-      x: (e.clientX - rect.left) * (canvas.width / rect.width),
-      y: (e.clientY - rect.top) * (canvas.height / rect.height),
+      x: (clientX - rect.left) * (canvas.width / rect.width),
+      y: (clientY - rect.top) * (canvas.height / rect.height),
     };
   };
 
@@ -226,9 +228,13 @@ function ImageEditor({ file, onDone, onCancel }) {
           {tool === "pen" && "คลิกแล้วลากเพื่อวาดเส้น"}
         </div>
 
-        <canvas ref={canvasRef}
-          style={{ width: "100%", borderRadius: 4, border: `1px solid ${C.border}`, display: "block", cursor: tool === "text" ? (draggingText ? "grabbing" : "grab") : "crosshair" }}
-          onMouseDown={onMouseDown} onMouseMove={onMouseMove} onMouseUp={onMouseUp} onMouseLeave={onMouseUp} />
+         <canvas ref={canvasRef}
+          style={{ width: "100%", borderRadius: 4, border: `1px solid ${C.border}`, display: "block", cursor: tool === "text" ? (draggingText ? "grabbing" : "grab") : "crosshair", touchAction: "none" }}
+          onMouseDown={onMouseDown} onMouseMove={onMouseMove} onMouseUp={onMouseUp} onMouseLeave={onMouseUp}
+          onTouchStart={e => { e.preventDefault(); onMouseDown(e.touches[0]); }}
+          onTouchMove={e => { e.preventDefault(); onMouseMove(e.touches[0]); }}
+          onTouchEnd={e => { e.preventDefault(); onMouseUp(e.changedTouches[0]); }}
+        />
 
         <div style={{ display: "flex", gap: 8, marginTop: 12, justifyContent: "flex-end" }}>
           <button onClick={onCancel} style={{ padding: "8px 20px", border: `1px solid ${C.border}`, borderRadius: 4, fontSize: 12, cursor: "pointer", background: "transparent", color: C.textMuted }}>ยกเลิก</button>
