@@ -226,7 +226,20 @@ app.get("/api/dpd", (req, res) => {
 app.get("/api/dpd/provinces", (req, res) => {
   res.json(queryAll("SELECT DISTINCT province FROM dpd WHERE province IS NOT NULL ORDER BY province").map(r => r.province));
 });
- 
+ const multerLocal = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
+const XLSX = require("xlsx");
+
+app.post("/api/import-excel", multerLocal.single("file"), (req, res) => {
+  if (!req.file) return res.status(400).json({ error: "No file" });
+  try {
+    const wb = XLSX.read(req.file.buffer, { type: "buffer" });
+    const sheet = wb.Sheets[wb.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(sheet, { defval: "" });
+    res.json({ success: true, rows, count: rows.length });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
 app.post("/api/import", (req, res) => {
   const { table, rows } = req.body;
   if (!table || !rows) return res.status(400).json({ error: "Invalid" });

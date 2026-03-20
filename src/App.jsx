@@ -545,7 +545,91 @@ function DPDTab({ search }) {
     </div>
   );
 }
+function ImportTab() {
+  const [files, setFiles] = useState({ bill: null, limit: null, dpd: null });
+  const [status, setStatus] = useState({});
+  const [loading, setLoading] = useState(false);
 
+  const handleFile = (key, file) => setFiles(prev => ({ ...prev, [key]: file }));
+
+  const importTable = async (key, file) => {
+    setStatus(prev => ({ ...prev, [key]: { state: "loading", msg: "กำลังอ่านไฟล์..." } }));
+    const form = new FormData();
+    form.append("file", file);
+    const res = await fetch(`${API}/api/import-excel`, { method: "POST", body: form });
+    const { rows, error } = await res.json();
+    if (error) { setStatus(prev => ({ ...prev, [key]: { state: "error", msg: error } })); return null; }
+    setStatus(prev => ({ ...prev, [key]: { state: "loading", msg: `อ่านได้ ${rows.length} rows กำลัง import...` } }));
+
+    const mapped = rows.map(r => {
+      const row = {};
+      Object.keys(r).forEach(k => { row[k.trim().toLowerCase().replace(/\s+/g,"_")] = r[k]; });
+      return row;
+    });
+
+    const importRes = await fetch(`${API}/api/import`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ table: key === "dpd" ? "dpd" : key === "limit" ? "limit_info" : "bill", rows: mapped.map(r => {
+        if (key === "bill") return { acc: String(Math.round(parseFloat(r.acc||0))), no: r.no, channee: r.channee, mkank: r.mkank, name: r.name, c1: r.c1, c2: r.c2, c3: r.c3, c4: r.c4, call: r.call, type: r.type, mkt_code: r["mkt_code:"]||r.mkt_code||r["mktcode"]||r["mkt code"]||"", company: r.company, branch: r.branch };
+        if (key === "limit") return { acc: String(Math.round(parseFloat(r.acc||0))), name: r.name, no: r.no, channee: r.channee, kank: r.kank, allbalance: r.allbalance, calculate_mat: r.calculate_mat };
+        if (key === "dpd") return { acc: String(Math.round(parseFloat(r.acc||0))), name: r.name, tel1: r.tel1, tel2: r.tel2, tel3: r.tel3, tel4: r.tel4, address: r.address, road: r.road, yak: r.yak, soy: r.soy, tambol: r.tambol, ampher: r.ampher, province: r.province, code: r.code };
+      })})
+    });
+    const result = await importRes.json();
+    if (result.success) {
+      setStatus(prev => ({ ...prev, [key]: { state: "success", msg: `✅ import สำเร็จ ${result.count} rows` } }));
+    } else {
+      setStatus(prev => ({ ...prev, [key]: { state: "error", msg: result.error } }));
+    }
+  };
+
+  const handleImportAll = async () => {
+    setLoading(true);
+    for (const key of ["bill", "limit", "dpd"]) {
+      if (files[key]) await importTable(key, files[key]);
+    }
+    setLoading(false);
+  };
+
+  const tables = [
+    { key: "bill", label: "Bill", desc: "bill.xlsx" },
+    { key: "limit", label: "Limit", desc: "limit.xlsx" },
+    { key: "dpd", label: "DPD", desc: "dpd_.xlsx" },
+  ];
+
+  return (
+    <div>
+      <div style={{ marginBottom: 24, fontSize: 11, color: C.textLight }}>อัปโหลดไฟล์ Excel เพื่ออัปเดทข้อมูล — ข้อมูลเก่าจะถูกแทนที่ทั้งหมด</div>
+      <div style={{ display: "grid", gap: 12, marginBottom: 24 }}>
+        {tables.map(({ key, label, desc }) => (
+          <div key={key} style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 6, padding: "16px 20px", display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
+            <div style={{ minWidth: 80 }}>
+              <div style={{ fontSize: 12, fontWeight: 500, color: C.accent }}>{label}</div>
+              <div style={{ fontSize: 10, color: C.textLight }}>{desc}</div>
+            </div>
+            <label style={{ flex: 1, cursor: "pointer" }}>
+              <div style={{ border: `1px dashed ${files[key] ? C.accent : C.border}`, borderRadius: 4, padding: "10px 16px", textAlign: "center", fontSize: 12, color: files[key] ? C.accent : C.textLight, background: files[key] ? C.accentLight : "transparent", transition: "all 0.15s" }}>
+                {files[key] ? `📄 ${files[key].name}` : "คลิกเพื่อเลือกไฟล์ .xlsx"}
+              </div>
+              <input type="file" accept=".xlsx,.xls" style={{ display: "none" }}
+                onChange={e => e.target.files[0] && handleFile(key, e.target.files[0])} />
+            </label>
+            {status[key] && (
+              <div style={{ fontSize: 11, color: status[key].state === "success" ? C.success : status[key].state === "error" ? C.danger : C.textMuted, minWidth: 180 }}>
+                {status[key].msg}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+      <button onClick={handleImportAll} disabled={loading || !Object.values(files).some(Boolean)}
+        style={{ padding: "10px 28px", background: C.accent, color: "#fff", border: "none", borderRadius: 4, fontSize: 12, cursor: "pointer", opacity: loading || !Object.values(files).some(Boolean) ? 0.5 : 1, letterSpacing: "1px" }}>
+        {loading ? "⏳ กำลัง Import..." : "Import ข้อมูล"}
+      </button>
+    </div>
+  );
+}
 export default function App() {
   const [tab, setTab] = useState("limit");
   const [stats, setStats] = useState(null);
@@ -568,8 +652,9 @@ export default function App() {
     { key: "limit", label: "Limit", count: stats?.limitCount },
     { key: "bill",  label: "Bill",  count: stats?.billCount },
     { key: "dpd",   label: "DPD",   count: stats?.dpdCount },
+    { key: "import", label: "Import", count: null },
   ];
-
+  {tab === "import" && <ImportTab />}
   return (
     <div style={{ minHeight: "100vh", background: C.bg, fontFamily: "'DM Mono','Fira Mono',monospace", color: C.text, padding: "40px 24px" }}>
       <style>{`
