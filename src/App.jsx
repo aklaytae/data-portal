@@ -654,7 +654,7 @@ export default function App() {
     { key: "dpd",   label: "DPD",   count: stats?.dpdCount },
     { key: "import", label: "Import", count: null },
   ];
-  {tab === "import" && <ImportTab />}
+  
   return (
     <div style={{ minHeight: "100vh", background: C.bg, fontFamily: "'DM Mono','Fira Mono',monospace", color: C.text, padding: "40px 24px" }}>
       <style>{`
@@ -705,6 +705,7 @@ export default function App() {
         {tab === "bill"  && <BillTab  search={search} />}
         {tab === "limit" && <LimitTab search={search} />}
         {tab === "dpd"   && <DPDTab   search={search} />}
+        {tab === "import" && <ImportTab />}
       </div>
     </div>
   );
