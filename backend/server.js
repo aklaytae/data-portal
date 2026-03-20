@@ -6,7 +6,7 @@ const initSqlJs = require("sql.js");
 const multer = require("multer");
 const cloudinary = require("cloudinary").v2;
 const { CloudinaryStorage } = require("multer-storage-cloudinary");
- 
+const XLSX = require("xlsx"); 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
@@ -227,7 +227,6 @@ app.get("/api/dpd/provinces", (req, res) => {
   res.json(queryAll("SELECT DISTINCT province FROM dpd WHERE province IS NOT NULL ORDER BY province").map(r => r.province));
 });
  const multerLocal = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
-const XLSX = require("xlsx");
 
 app.post("/api/import-excel", multerLocal.single("file"), (req, res) => {
   if (!req.file) return res.status(400).json({ error: "No file" });
