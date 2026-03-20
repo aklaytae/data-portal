@@ -269,8 +269,46 @@ app.post("/api/import", (req, res) => {
   }
 });
 
+async function autoImport() {
+  const files = {
+    bill: path.join(__dirname, "bill.xlsx"),
+    limit_info: path.join(__dirname, "limit.xlsx"),
+    dpd: path.join(__dirname, "dpd_.xlsx"),
+  };
+  for (const [table, filePath] of Object.entries(files)) {
+    if (!fs.existsSync(filePath)) { console.log(`⚠️ ไม่พบ ${filePath}`); continue; }
+    try {
+      const wb = XLSX.readFile(filePath);
+      const sheet = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(sheet, { defval: "" });
+      if (table === "bill") {
+        db.run("DELETE FROM bill");
+        const stmt = db.prepare("INSERT INTO bill (acc,no,channee,mkank,name,c1,c2,c3,c4,call,type,mkt_code,company,branch,imported_date) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
+        const now = Date.now();
+        rows.forEach(r => stmt.run([r.acc??'',r.no??null,r.channee??null,r.mkank??null,r.name??'',r.c1??'',r.c2??'',r.c3??'',r.c4??null,r.call??'',r.type??'',r.mkt_code??'',r.company??'',r.branch??'',now]));
+        stmt.free();
+      } else if (table === "limit_info") {
+        db.run("DELETE FROM limit_info");
+        const stmt = db.prepare("INSERT INTO limit_info (acc,name,no,channee,kank,allbalance,calculate_mat) VALUES (?,?,?,?,?,?,?)");
+        rows.forEach(r => stmt.run([r.acc??'',r.name??'',r.no??'',r.channee??'',r.kank??'',r.allbalance??'',r.calculate_mat??null]));
+        stmt.free();
+      } else if (table === "dpd") {
+        db.run("DELETE FROM dpd");
+        const stmt = db.prepare("INSERT INTO dpd (acc,name,tel1,tel2,tel3,tel4,address,road,yak,soy,tambol,ampher,province,code) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
+        rows.forEach(r => stmt.run([r.acc??'',r.name??'',r.tel1??'',r.tel2??'',r.tel3??'',r.tel4??'',r.address??'',r.road??'',r.yak??'',r.soy??'',r.tambol??'',r.ampher??'',r.province??'',r.code??null]));
+        stmt.free();
+      }
+      console.log(`✅ Auto import ${table}: ${rows.length} rows`);
+    } catch(e) {
+      console.error(`❌ Auto import ${table} error:`, e.message);
+    }
+  }
+  saveDB();
+}
+
 // Start
-initDB().then(() => {
+initDB().then(async () => {
+  await autoImport();
   app.use(express.static(path.join(__dirname, "build")));
   app.get("*", (req, res) => {
     res.sendFile(path.join(__dirname, "build", "index.html"));
