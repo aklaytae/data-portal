@@ -228,7 +228,13 @@ app.post("/api/import-excel", multerLocal.single("file"), (req, res) => {
   try {
     const wb = XLSX.read(req.file.buffer, { type: "buffer" });
     const sheet = wb.Sheets[wb.SheetNames[0]];
-    const rows = XLSX.utils.sheet_to_json(sheet, { defval: "" });
+    const rawRows = XLSX.utils.sheet_to_json(sheet, { defval: "" });
+      // normalize column names to lowercase
+      const rows = rawRows.map(r => {
+        const obj = {};
+        Object.keys(r).forEach(k => { obj[k.toLowerCase().replace(/\s+/g,"_").replace(/\./g,"")] = r[k]; });
+        return obj;
+      });
     res.json({ success: true, rows, count: rows.length });
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -280,7 +286,13 @@ async function autoImport() {
     try {
       const wb = XLSX.readFile(filePath);
       const sheet = wb.Sheets[wb.SheetNames[0]];
-      const rows = XLSX.utils.sheet_to_json(sheet, { defval: "" });
+      const rawRows = XLSX.utils.sheet_to_json(sheet, { defval: "" });
+      // normalize column names to lowercase
+      const rows = rawRows.map(r => {
+        const obj = {};
+        Object.keys(r).forEach(k => { obj[k.toLowerCase().replace(/\s+/g,"_").replace(/\./g,"")] = r[k]; });
+        return obj;
+      });
       if (table === "bill") {
         db.run("DELETE FROM bill");
         const stmt = db.prepare("INSERT INTO bill (acc,no,channee,mkank,name,c1,c2,c3,c4,call,type,mkt_code,company,branch,imported_date) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
@@ -290,7 +302,7 @@ async function autoImport() {
       } else if (table === "limit_info") {
         db.run("DELETE FROM limit_info");
         const stmt = db.prepare("INSERT INTO limit_info (acc,name,no,channee,kank,allbalance,calculate_mat) VALUES (?,?,?,?,?,?,?)");
-        rows.forEach(r => stmt.run([r.acc??'',r.name??'',r.no??'',r.channee??'',r.kank??'',r.allbalance??'',r.calculate_mat??null]));
+        rows.forEach(r => stmt.run([r.acc??'',r.name??'',r['no']??'',r.channee??'',r.kank??'',r.allbalance??'',r['calculate_mat']??null]));
         stmt.free();
       } else if (table === "dpd") {
         db.run("DELETE FROM dpd");
