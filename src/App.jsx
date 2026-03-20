@@ -1,13 +1,23 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 
 const API = "";
+
 const fmt = (v) => (v == null || v === "" ? "—" : v);
 
 const C = {
-  bg: "#f5f4f0", surface: "#ffffff", border: "#e2e0d8", borderDark: "#d0cec4",
-  text: "#1a1a1a", textMuted: "#6b6b6b", textLight: "#9a9a9a",
-  accent: "#b8860b", accentLight: "rgba(184,134,11,0.1)", accentBorder: "rgba(184,134,11,0.3)",
-  hover: "rgba(184,134,11,0.06)", danger: "#dc2626", success: "#16a34a",
+  bg: "#f5f4f0",
+  surface: "#ffffff",
+  border: "#e2e0d8",
+  borderDark: "#d0cec4",
+  text: "#1a1a1a",
+  textMuted: "#6b6b6b",
+  textLight: "#9a9a9a",
+  accent: "#b8860b",
+  accentLight: "rgba(184,134,11,0.1)",
+  accentBorder: "rgba(184,134,11,0.3)",
+  hover: "rgba(184,134,11,0.06)",
+  danger: "#dc2626",
+  success: "#16a34a",
 };
 
 function StatCard({ label, value, icon }) {
@@ -47,99 +57,10 @@ function PBtn({ children, onClick, disabled, active }) {
   );
 }
 
-function ImageEditor({ file, onDone, onCancel }) {
-  const canvasRef = useRef();
-  const [text, setText] = useState("");
-  const [fontSize, setFontSize] = useState(32);
-  const [color, setColor] = useState("#ffffff");
-  const [pos, setPos] = useState({ x: 20, y: 50 });
-  const [dragging, setDragging] = useState(false);
-  const [img, setImg] = useState(null);
-
-  useEffect(() => {
-    const image = new Image();
-    image.onload = () => setImg(image);
-    image.src = URL.createObjectURL(file);
-  }, [file]);
-
-  useEffect(() => {
-    if (!img || !canvasRef.current) return;
-    const canvas = canvasRef.current;
-    const MAX = 600;
-    let w = img.width, h = img.height;
-    if (w > MAX) { h = Math.round(h * MAX / w); w = MAX; }
-    canvas.width = w; canvas.height = h;
-    const ctx = canvas.getContext("2d");
-    ctx.drawImage(img, 0, 0, w, h);
-    if (text) {
-      ctx.font = `bold ${fontSize}px sans-serif`;
-      ctx.strokeStyle = "rgba(0,0,0,0.6)";
-      ctx.lineWidth = 3;
-      ctx.strokeText(text, pos.x, pos.y);
-      ctx.fillStyle = color;
-      ctx.fillText(text, pos.x, pos.y);
-    }
-  }, [img, text, fontSize, color, pos]);
-
-  const getCanvasPos = (e) => {
-    const rect = canvasRef.current.getBoundingClientRect();
-    return {
-      x: (e.clientX - rect.left) * (canvasRef.current.width / rect.width),
-      y: (e.clientY - rect.top) * (canvasRef.current.height / rect.height),
-    };
-  };
-
-  const onMouseDown = (e) => {
-    const { x, y } = getCanvasPos(e);
-    if (Math.abs(x - pos.x) < 150 && Math.abs(y - pos.y) < 40) setDragging(true);
-  };
-  const onMouseMove = (e) => { if (dragging) setPos(getCanvasPos(e)); };
-  const onMouseUp = () => setDragging(false);
-
-  const handleDone = () => {
-    canvasRef.current.toBlob(blob => {
-      onDone(new File([blob], "image.jpg", { type: "image/jpeg" }));
-    }, "image/jpeg", 0.9);
-  };
-
-  return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 300, padding: 24 }}>
-      <div style={{ background: "#fff", borderRadius: 8, padding: 20, maxWidth: 700, width: "100%", boxShadow: "0 20px 60px rgba(0,0,0,0.3)", maxHeight: "90vh", overflow: "auto" }}>
-        <div style={{ fontSize: 13, fontWeight: 500, color: C.text, marginBottom: 12 }}>แต่งรูปก่อนอัปโหลด</div>
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", marginBottom: 8 }}>
-          <input value={text} onChange={e => setText(e.target.value)} placeholder="พิมพ์ข้อความ..."
-            style={{ flex: 1, padding: "8px 12px", border: `1px solid ${C.border}`, borderRadius: 4, fontSize: 13, minWidth: 160, outline: "none" }} />
-          <input type="number" value={fontSize} onChange={e => setFontSize(+e.target.value)} min={12} max={120}
-            title="ขนาดตัวอักษร"
-            style={{ width: 64, padding: "8px", border: `1px solid ${C.border}`, borderRadius: 4, fontSize: 13, outline: "none" }} />
-          <input type="color" value={color} onChange={e => setColor(e.target.value)}
-            title="สีตัวอักษร"
-            style={{ width: 40, height: 36, border: `1px solid ${C.border}`, borderRadius: 4, cursor: "pointer", padding: 2 }} />
-        </div>
-        <div style={{ fontSize: 11, color: C.textLight, marginBottom: 8 }}>ลากข้อความในรูปเพื่อเปลี่ยนตำแหน่ง</div>
-        <canvas ref={canvasRef}
-          style={{ width: "100%", borderRadius: 4, border: `1px solid ${C.border}`, cursor: dragging ? "grabbing" : "grab", display: "block" }}
-          onMouseDown={onMouseDown} onMouseMove={onMouseMove} onMouseUp={onMouseUp} onMouseLeave={onMouseUp} />
-        <div style={{ display: "flex", gap: 8, marginTop: 12, justifyContent: "flex-end" }}>
-          <button onClick={onCancel}
-            style={{ padding: "8px 20px", border: `1px solid ${C.border}`, borderRadius: 4, fontSize: 12, cursor: "pointer", background: "transparent", color: C.textMuted }}>
-            ยกเลิก
-          </button>
-          <button onClick={handleDone}
-            style={{ padding: "8px 20px", background: C.accent, color: "#fff", border: "none", borderRadius: 4, fontSize: 12, cursor: "pointer" }}>
-            อัปโหลด
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function ImageCell({ acc }) {
   const [images, setImages] = useState([]);
   const [modal, setModal] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [editFile, setEditFile] = useState(null);
   const fileRef = useRef();
 
   const loadImages = async () => {
@@ -148,10 +69,34 @@ function ImageCell({ acc }) {
     setImages(data);
   };
 
+  const compressImage = (file) => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement("canvas");
+          const MAX = 1200;
+          let w = img.width, h = img.height;
+          if (w > MAX || h > MAX) {
+            if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
+            else { w = Math.round(w * MAX / h); h = MAX; }
+          }
+          canvas.width = w; canvas.height = h;
+          canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+          canvas.toBlob((blob) => resolve(new File([blob], file.name, { type: "image/jpeg" })), "image/jpeg", 0.8);
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
   const handleUpload = async (file) => {
     setLoading(true);
+    const compressed = await compressImage(file);
     const form = new FormData();
-    form.append("file", file, "image.jpg");
+    form.append("file", compressed, "image.jpg");
     await fetch(`${API}/api/images/${acc}`, { method: "POST", body: form });
     await loadImages();
     setLoading(false);
@@ -172,14 +117,6 @@ function ImageCell({ acc }) {
         borderRadius: 4, fontSize: 10, letterSpacing: "1px", whiteSpace: "nowrap",
       }}>📷 รูป</button>
 
-      {editFile && (
-        <ImageEditor
-          file={editFile}
-          onDone={async (f) => { setEditFile(null); await handleUpload(f); }}
-          onCancel={() => setEditFile(null)}
-        />
-      )}
-
       {modal && (
         <div onClick={() => setModal(false)}
           style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200, backdropFilter: "blur(4px)", padding: 24 }}>
@@ -189,13 +126,13 @@ function ImageCell({ acc }) {
               <span style={{ color: C.accent, fontSize: 11, letterSpacing: "2px", textTransform: "uppercase" }}>รูปภาพ — {acc}</span>
               <div style={{ display: "flex", gap: 8 }}>
                 <button onClick={() => fileRef.current.click()} disabled={loading}
-                  style={{ background: C.accent, color: "#fff", border: "none", padding: "8px 16px", borderRadius: 4, fontSize: 12, cursor: "pointer" }}>
+                  style={{ background: C.accent, color: "#fff", border: "none", padding: "14px 14px", borderRadius: 7, fontSize: 16, cursor: "pointer" }}>
                   {loading ? "⏳" : "+ อัปโหลด"}
                 </button>
                 <button onClick={() => setModal(false)} style={{ background: "none", border: "none", color: C.textLight, cursor: "pointer", fontSize: 18 }}>✕</button>
               </div>
               <input ref={fileRef} type="file" accept="image/*" style={{ display: "none" }}
-                onChange={e => { if (e.target.files[0]) { setEditFile(e.target.files[0]); e.target.value = ""; } }} />
+                onChange={e => e.target.files[0] && handleUpload(e.target.files[0])} />
             </div>
             <div style={{ padding: 20 }}>
               {images.length === 0 ? (
@@ -268,12 +205,12 @@ function BillTab({ search }) {
             )}
             {data.rows.map((r, i) => (
               <tr key={r.id} onClick={() => openDetail(r.acc)}
-                style={{ borderBottom: `1px solid ${C.border}`, background: i % 2 === 0 ? "#fff" : "#faf9f7", cursor: "pointer" }}
+                style={{ borderBottom: `1px solid ${C.border}`, background: i % 2 === 0 ? "#fff" : "#faf9f7", cursor: "pointer", transition: "background 0.1s" }}
                 onMouseEnter={e => e.currentTarget.style.background = C.hover}
                 onMouseLeave={e => e.currentTarget.style.background = i % 2 === 0 ? "#fff" : "#faf9f7"}>
-                <td style={{ padding: "14px", color: C.accent, fontWeight: 500 }}>{fmt(r.acc)}</td>
-                <td style={{ padding: "14px", color: C.text, maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{fmt(r.name)}</td>
-                <td style={{ padding: "14px", color: C.textMuted }}>{Number(r.call).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                <td style={{ padding: "14px 14px", color: C.accent, fontWeight: 500 }}>{fmt(r.acc)}</td>
+                <td style={{ padding: "14px 14px", color: C.text, maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{fmt(r.name)}</td>
+                <td style={{ padding: "14px 14px", color: C.textMuted }}>{Number(r.call).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
               </tr>
             ))}
           </tbody>
@@ -353,10 +290,10 @@ function LimitTab({ search }) {
             )}
             {data.rows.map((r, i) => (
               <tr key={r.id} style={{ borderBottom: `1px solid ${C.border}`, background: i % 2 === 0 ? "#fff" : "#faf9f7" }}>
-                <td style={{ padding: "14px", color: C.accent, fontWeight: 500 }}>{fmt(r.acc)}</td>
-                <td style={{ padding: "14px", color: C.text }}>{fmt(r.name)}</td>
-                <td style={{ padding: "14px", color: C.textMuted }}>{Number(r.allbalance).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                <td style={{ padding: "14px" }} onClick={e => e.stopPropagation()}>
+                <td style={{ padding: "14px 14px", color: C.accent, fontWeight: 500 }}>{fmt(r.acc)}</td>
+                <td style={{ padding: "14px 14px", color: C.text }}>{fmt(r.name)}</td>
+                <td style={{ padding: "14px 14px", color: C.textMuted }}>{Number(r.allbalance).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                <td style={{ padding: "14px 14px" }} onClick={e => e.stopPropagation()}>
                   <ImageCell acc={r.acc} />
                 </td>
               </tr>
@@ -412,8 +349,8 @@ function DPDTab({ search }) {
             )}
             {data.rows.map((r, i) => (
               <tr key={r.id} style={{ borderBottom: `1px solid ${C.border}`, background: i % 2 === 0 ? "#fff" : "#faf9f7" }}>
-                <td style={{ padding: "14px", color: C.text }}>{fmt(r.name)}</td>
-                <td style={{ padding: "14px", color: C.textMuted }}>
+                <td style={{ padding: "14px 14px", color: C.text }}>{fmt(r.name)}</td>
+                <td style={{ padding: "14px 14px", color: C.textMuted }}>
                   {[r.tel1, r.tel2, r.tel3, r.tel4].filter(Boolean).map((tel, idx, arr) => (
                     <span key={idx}>
                       <a href={`tel:${tel.replace(/\s+/g,'')}`} style={{ color: "inherit", textDecoration: "none" }}
@@ -423,10 +360,10 @@ function DPDTab({ search }) {
                     </span>
                   )) || "—"}
                 </td>
-                <td style={{ padding: "14px", color: C.textMuted, maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                <td style={{ padding: "14px 14px", color: C.textMuted, maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                   {[r.address, r.road, r.soy].filter(Boolean).join(" ") || "—"}
                 </td>
-                <td style={{ padding: "14px", color: C.textMuted }}>{fmt(r.tambol)}</td>
+                <td style={{ padding: "14px 14px", color: C.textMuted }}>{fmt(r.tambol)}</td>
               </tr>
             ))}
           </tbody>
@@ -469,44 +406,51 @@ export default function App() {
         ::-webkit-scrollbar { width: 4px; height: 4px; }
         ::-webkit-scrollbar-track { background: #f0efe9; }
         ::-webkit-scrollbar-thumb { background: #d0cec4; }
-        input::placeholder { color: #b0aea6; }
+        input::placeholder { color: #b0ae a6; }
         select option { background: #fff; }
       `}</style>
 
       <div style={{ maxWidth: 1100, margin: "0 auto" }}>
+
         <div style={{ marginBottom: 40 }}>
           <div style={{ display: "flex", alignItems: "baseline", gap: 12, marginBottom: 6, flexWrap: "wrap" }}>
             <span style={{ fontFamily: "'Playfair Display',serif", fontSize: 32, fontWeight: 900, color: C.accent, letterSpacing: "-1px" }}>DATA PORTAL</span>
             <span style={{ fontSize: 10, color: C.textLight, letterSpacing: "4px", textTransform: "uppercase" }}>
-              bill · limit · dpd{lastImport ? ` · imported ${new Date(lastImport).toLocaleDateString("th-TH", { day: "2-digit", month: "short", year: "numeric" })}` : ""}
+
             </span>
-            <span style={{ marginLeft: "auto", fontSize: 10, color: connected ? C.success : C.danger, letterSpacing: "2px" }}>
+            <span style={{ marginLeft: "auto", fontSize: 20, color: connected ? C.success : C.danger, letterSpacing: "2px" }}>
               {connected === null ? "..." : connected ? "● connected" : "● offline — รัน backend ก่อน"}
             </span>
           </div>
           <div style={{ height: 1, background: `linear-gradient(90deg,${C.accent}66,transparent)` }} />
         </div>
 
-        {stats && (
-          <div style={{ display: "flex", gap: 12, marginBottom: 36, flexWrap: "wrap" }}>
-            <StatCard icon="📋" label="Bill Records"  value={stats.billCount} />
-            <StatCard icon="💰" label="Limit Records" value={stats.limitCount} />
-            <StatCard icon="📅" label="DPD Records"   value={stats.dpdCount} />
-            <StatCard icon="🏙️" label="จังหวัด"       value={stats.provinces} />
-            <StatCard icon="🏢" label="บริษัท"         value={stats.companies} />
-          </div>
-        )}
+        
 
         <div style={{ marginBottom: 20 }}>
-          <input value={search} onChange={e => setSearch(e.target.value)}
+          <input
+            value={search}
+            onChange={e => setSearch(e.target.value)}
             placeholder="ค้นหา ACC, ชื่อ, บริษัท, จังหวัด..."
-            style={{ background: C.surface, border: `1px solid ${C.border}`, color: C.text, padding: "10px 16px", borderRadius: 8, fontSize: 14, outline: "none", width: 340, fontFamily: "inherit", boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }} />
+            style={{
+              background: C.surface, border: `1px solid ${C.border}`,
+              color: C.text, padding: "10px 16px", borderRadius: 8,
+              fontSize: 16, outline: "none", width: 340, fontFamily: "inherit",
+              boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
+            }}
+          />
         </div>
 
         <div style={{ display: "flex", gap: 2, marginBottom: 24, borderBottom: `1px solid ${C.border}` }}>
           {tabs.map(t => (
             <button key={t.key} onClick={() => setTab(t.key)}
-              style={{ background: tab === t.key ? C.accent : "transparent", color: tab === t.key ? "#fff" : C.textMuted, border: "none", padding: "10px 24px", cursor: "pointer", fontSize: 11, letterSpacing: "2px", textTransform: "uppercase", fontFamily: "inherit", transition: "all 0.15s", borderRadius: "4px 4px 0 0" }}>
+              style={{
+                background: tab === t.key ? C.accent : "transparent",
+                color: tab === t.key ? "#fff" : C.textMuted,
+                border: "none", padding: "10px 24px", cursor: "pointer",
+                fontSize: 11, letterSpacing: "2px", textTransform: "uppercase",
+                fontFamily: "inherit", transition: "all 0.15s", borderRadius: "4px 4px 0 0",
+              }}>
               {t.label}
               {t.count != null && <span style={{ marginLeft: 8, fontSize: 10, opacity: 0.7 }}>({t.count?.toLocaleString()})</span>}
             </button>
@@ -516,6 +460,7 @@ export default function App() {
         {tab === "bill"  && <BillTab  search={search} />}
         {tab === "limit" && <LimitTab search={search} />}
         {tab === "dpd"   && <DPDTab   search={search} />}
+
       </div>
     </div>
   );
