@@ -299,7 +299,7 @@ function ImageCell({ acc }) {
               <span style={{ color: C.accent, fontSize: 11, letterSpacing: "2px", textTransform: "uppercase" }}>รูปภาพ — {acc}</span>
               <div style={{ display: "flex", gap: 8 }}>
                 <button onClick={() => fileRef.current.click()} disabled={loading}
-                  style={{ background: C.accent, color: "#fff", border: "none", padding: "8px 16px", borderRadius: 4, fontSize: 12, cursor: "pointer" }}>
+                  style={{ background: C.accent, color: "#fff", border: "none", padding: "8px 16px", borderRadius: 5, fontSize: 16, cursor: "pointer" }}>
                   {loading ? "⏳" : "+ อัปโหลด"}
                 </button>
                 <button onClick={() => setModal(false)} style={{ background: "none", border: "none", color: C.textLight, cursor: "pointer", fontSize: 18 }}>✕</button>
@@ -679,15 +679,7 @@ export default function App() {
           </div>
           <div style={{ height: 1, background: `linear-gradient(90deg,${C.accent}66,transparent)` }} />
         </div>
-        {stats && (
-          <div style={{ display: "flex", gap: 12, marginBottom: 36, flexWrap: "wrap" }}>
-            <StatCard icon="📋" label="Bill Records"  value={stats.billCount} />
-            <StatCard icon="💰" label="Limit Records" value={stats.limitCount} />
-            <StatCard icon="📅" label="DPD Records"   value={stats.dpdCount} />
-            <StatCard icon="🏙️" label="จังหวัด"       value={stats.provinces} />
-            <StatCard icon="🏢" label="บริษัท"         value={stats.companies} />
-          </div>
-        )}
+
         <div style={{ marginBottom: 20 }}>
           <input value={search} onChange={e => setSearch(e.target.value)}
             placeholder="ค้นหา ACC, ชื่อ, บริษัท, จังหวัด..."
