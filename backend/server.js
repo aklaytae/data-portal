@@ -234,7 +234,8 @@ app.post("/api/import-excel", multerLocal.single("file"), (req, res) => {
         const obj = {};
         Object.keys(r).forEach(k => { obj[k.toLowerCase().replace(/\s+/g,"_").replace(/\./g,"")] = r[k]; });
         // แปลง acc ให้เป็น integer string ไม่มีทศนิยม
-        if (obj.acc) obj.acc = String(Math.round(parseFloat(obj.acc)));
+        if (obj.acc !== undefined) obj.acc = String(Math.round(parseFloat(obj.acc) || 0));
+        if (obj.name) obj.name = obj.name.toString().replace(/\s+\d{2}\/\d{2}\/\d{4}.*/g, "").trim();
         return obj;
       });
     res.json({ success: true, rows, count: rows.length });
