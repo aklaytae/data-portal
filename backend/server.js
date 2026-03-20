@@ -298,6 +298,7 @@ async function autoImport() {
         rows.forEach(r => stmt.run([r.acc??'',r.name??'',r.tel1??'',r.tel2??'',r.tel3??'',r.tel4??'',r.address??'',r.road??'',r.yak??'',r.soy??'',r.tambol??'',r.ampher??'',r.province??'',r.code??null]));
         stmt.free();
       }
+      if (rows.length > 0) console.log(`📋 ${table} columns:`, Object.keys(rows[0]));
       console.log(`✅ Auto import ${table}: ${rows.length} rows`);
     } catch(e) {
       console.error(`❌ Auto import ${table} error:`, e.message);
