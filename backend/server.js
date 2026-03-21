@@ -299,6 +299,13 @@ async function autoImport() {
       const rows = rawRows.map(r => {
         const obj = {};
         Object.keys(r).forEach(k => { obj[k.toLowerCase().replace(/\s+/g,"_").replace(/\./g,"")] = r[k]; });
+        // แปลง acc เป็น integer string
+        if (obj.acc !== undefined) {
+          const num = typeof obj.acc === 'number' ? obj.acc : parseFloat(String(obj.acc).replace(/[^0-9.]/g, ''));
+          obj.acc = String(Math.round(num));
+        }
+        // ตัดวันที่ออกจากชื่อ
+        if (obj.name) obj.name = String(obj.name).replace(/\s+\d{2}\/\d{2}\/\d{4}.*/g, "").trim();
         return obj;
       });
       if (table === "bill") {
